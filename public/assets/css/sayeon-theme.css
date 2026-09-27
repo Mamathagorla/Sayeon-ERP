@@ -1,0 +1,589 @@
+/*
+ * Sayeon ERP — shared premium theme layer.
+ *
+ * Loaded once from app/Views/layouts/main.php, after Bootstrap/AdminLTE
+ * but before that file's own inline <style> block, so every page that
+ * extends the layout gets this automatically — no per-view edits.
+ * Pure visual polish: no markup/behavior here, only CSS. Reuses the
+ * existing --sy-navy/--sy-teal brand tokens main.php already defines
+ * and extends them with the rest of the palette + a set of reusable
+ * "sy-*" component classes (stat cards, mini cards, status pills,
+ * quick-action tiles, page header) that any module page can opt into
+ * instead of re-inventing its own card/table look.
+ *
+ * Every color below is a var() against a token defined once in :root —
+ * a component rule should never hardcode a literal hex, so adding a
+ * new component later only means adding a token, not touching every
+ * existing rule that shares its color.
+ */
+
+:root {
+    --sy-bg: #f1f4f8;
+    --sy-surface: #ffffff;
+    --sy-border: #e6eaef;
+    --sy-border-soft: #eef1f5;
+    --sy-ink: #1f242c;
+    /* Fixed white — for text/icons that sit on --sy-gradient-hero (the
+       brand-red fill). */
+    --sy-hero-ink: #ffffff;
+    --sy-muted: #8a929e;
+    --sy-muted-soft: #b0b7c1;
+    --sy-hover-bg: #f5f7fa;
+    --sy-subtle-bg: #f8f9fb;
+    --sy-table-head-bg: #f8f9fb;
+
+    --sy-success: #16a34a;
+    --sy-success-soft: #e8f8ee;
+    --sy-warning: #d97706;
+    --sy-warning-soft: #fef3e2;
+    --sy-danger: #dc2626;
+    --sy-danger-soft: #fdecec;
+    --sy-info: #2563eb;
+    --sy-info-soft: #eaf1fe;
+    --sy-secondary: #64748b;
+    --sy-secondary-soft: #eef1f4;
+
+    /* Decorative brand pair — kept distinct from the semantic tokens above
+       on purpose: --sy-warning/--sy-danger/etc. mean something (status/
+       severity), these two are purely for visual identity (buttons, active
+       nav, avatar, icon chips, sidebar). --sy-accent is the brand red and
+       --sy-accent-warm the charcoal grey. The plain tokens are FILLS that
+       carry white text; --sy-accent-ink/--sy-accent-warm-ink are the
+       versions used where the color itself has to be TEXT (links, badge
+       numbers, icon glyphs on a light chip), and the -soft tokens are the
+       light chip backgrounds behind them. */
+    --sy-accent: #d62431;
+    --sy-accent-ink: #cc1f2c;
+    --sy-accent-soft: #fdeced;
+    --sy-accent-warm: #282c34;
+    --sy-accent-warm-ink: #3a404b;
+    --sy-accent-warm-soft: #eef0f3;
+    --sy-gradient-hero: linear-gradient(135deg, #de2f3b 0%, #b81c28 100%);
+
+    --sy-radius: 20px;
+    --sy-radius-sm: 12px;
+    --sy-radius-pill: 999px;
+    --sy-shadow: 0 1px 2px rgba(20, 24, 32, .04), 0 8px 24px -18px rgba(20, 24, 32, .18);
+    --sy-shadow-sm: 0 1px 2px rgba(20, 24, 32, .05);
+    --sy-shadow-accent: 0 10px 28px -14px rgba(214, 36, 49, .4);
+
+    /* Sidebar — a solid charcoal rail with white text. Kept as its own
+       token set (not reusing --sy-surface/--sy-ink) since it's a
+       brand-color rail, not a themed surface. */
+    --sy-sidebar-bg: linear-gradient(180deg, #2b3038 0%, #22262d 100%);
+    --sy-sidebar-border: rgba(255, 255, 255, .08);
+    --sy-sidebar-ink: #e9ecf1;
+    --sy-sidebar-muted: rgba(233, 236, 241, .62);
+    --sy-sidebar-header: rgba(233, 236, 241, .45);
+    --sy-sidebar-hover-bg: rgba(255, 255, 255, .07);
+    /* The active item is a solid brand-red pill with white text — the
+       same red used for buttons, badges and icon chips elsewhere. */
+    --sy-sidebar-active-bg: #d62431;
+    --sy-sidebar-active-ink: #ffffff;
+}
+
+body.bg-body-tertiary { background: var(--sy-bg) !important; }
+
+/* ============ Typography ============ */
+body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--sy-ink);
+}
+h1, h2, h3, h4, h5, h6 { color: var(--sy-ink); font-weight: 700; letter-spacing: -.01em; }
+
+/* ============ Scrollbars ============
+   Scrolling stays fully functional (mouse wheel, trackpad, touch,
+   keyboard, drag-select) everywhere — only the visible bar is removed.
+   Firefox/modern Blink: scrollbar-width:none. Chrome/Edge/Safari (and
+   any other WebKit browser): ::-webkit-scrollbar sized to 0 AND
+   display:none together, since either alone is inconsistently honored
+   across engines/versions. Universal `*` rule so nothing scrollable
+   shows a bar by default; the class-targeted rules below repeat it
+   !important on the containers that actually scroll in this layout
+   (.app-sidebar, .app-main — see layouts/main.php's comments) so it
+   can't lose a specificity/load-order fight with AdminLTE's own CSS,
+   same reasoning as this block's previous thin-scrollbar version. */
+* {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+.app-sidebar,
+.app-sidebar .sidebar-wrapper,
+.app-main,
+.sy-emp-body,
+.sy-pf-scroll {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+.app-sidebar::-webkit-scrollbar,
+.app-sidebar .sidebar-wrapper::-webkit-scrollbar,
+.app-main::-webkit-scrollbar,
+.sy-emp-body::-webkit-scrollbar,
+.sy-pf-scroll::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+}
+
+/* ============ Page header ============ */
+.app-content-header {
+    background: transparent;
+    padding-top: 22px;
+    padding-bottom: 6px;
+}
+.app-content-header h3 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--sy-ink);
+    letter-spacing: -.01em;
+}
+
+/* ============ Cards ============ */
+.app-content .card, .app-content .modal-content {
+    background-color: var(--sy-surface);
+    border: 1px solid var(--sy-border);
+    border-radius: var(--sy-radius);
+    box-shadow: var(--sy-shadow-sm);
+    color: var(--sy-ink);
+}
+.app-content .card-header {
+    background: var(--sy-surface);
+    border-bottom: 1px solid var(--sy-border-soft);
+    border-radius: var(--sy-radius) var(--sy-radius) 0 0 !important;
+    font-weight: 600;
+    padding: 14px 18px;
+}
+.app-content .card-body { padding: 18px; }
+
+/* ============ Buttons ============
+   Fully rounded (pill) rather than the previous soft-rectangle 9px —
+   matches the reference's pill CTAs/segmented controls; a small square
+   icon-only btn-sm just reads as a circle, which is consistent with the
+   reference's circular icon buttons too. */
+.app-content .btn, .app-header .btn, .app-content-header .btn {
+    border-radius: var(--sy-radius-pill);
+    font-weight: 600;
+    font-size: .85rem;
+    padding: .5rem 1.1rem;
+}
+.app-content .btn-sm { padding: .32rem .85rem; font-size: .8rem; border-radius: var(--sy-radius-pill); }
+.app-content .btn-primary {
+    box-shadow: var(--sy-shadow-accent);
+}
+.app-content .btn-group > .btn { border-radius: var(--sy-radius-pill) !important; }
+.app-content .btn-group > .btn:not(:last-child) { margin-right: 2px; }
+.app-content .btn-outline-secondary, .app-content .btn-light {
+    border-color: var(--sy-border);
+    color: var(--sy-ink);
+    background-color: var(--sy-surface);
+}
+.app-content .btn-outline-danger:hover { box-shadow: 0 6px 16px -8px rgba(220, 38, 38, .5); }
+
+/* ============ Tables ============ */
+.app-content .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--sy-ink);
+    font-size: .87rem;
+    /* Every table gets this, not just visibly-numeric columns — harmless
+       on text cells, and it keeps any amount/count column aligned without
+       having to hunt down and class each numeric <td> individually. */
+    font-variant-numeric: tabular-nums;
+}
+.app-content .table thead th {
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--sy-muted);
+    font-weight: 700;
+    border-bottom: 1px solid var(--sy-border);
+    background: var(--sy-table-head-bg);
+    padding: 10px 14px;
+}
+.app-content .table td { padding: 11px 14px; color: var(--sy-ink); border-bottom-color: var(--sy-border-soft); }
+.app-content .table-striped > tbody > tr:nth-of-type(odd) > * { background-color: var(--sy-table-head-bg); color: var(--sy-ink); }
+.app-content .table-hover > tbody > tr:hover > * { background-color: var(--sy-accent-soft); }
+.app-content .table-danger, .app-content .table-danger > * { --bs-table-bg: var(--sy-danger-soft); color: var(--sy-ink); }
+.app-content .table-light, .app-content .table-light > * { --bs-table-bg: var(--sy-table-head-bg); color: var(--sy-ink); }
+
+/* ============ Status badges/pills ============
+   Existing views already use plain Bootstrap `badge bg-<color>` (and
+   sometimes `text-bg-<color>`) for status — restyled here as soft
+   rounded pills instead of solid blocks, applied automatically to
+   every page with zero markup changes. Semantic (success/warning/
+   danger/info/secondary) colors are deliberately left alone by the
+   accent-color refresh — a status pill's color is meaning, not brand
+   decoration, so only the shape (pill) changes here, not the hue. */
+.app-content .badge, .app-content .badge.text-bg-primary, .app-content .badge.bg-primary {
+    font-weight: 600;
+    font-size: .72rem;
+    letter-spacing: .2px;
+    padding: .42em .75em;
+    border-radius: var(--sy-radius-pill);
+    font-variant-numeric: tabular-nums;
+}
+.app-content .badge.bg-success, .app-content .badge.text-bg-success { background-color: var(--sy-success-soft) !important; color: var(--sy-success) !important; }
+.app-content .badge.bg-warning, .app-content .badge.text-bg-warning { background-color: var(--sy-warning-soft) !important; color: var(--sy-warning) !important; }
+.app-content .badge.bg-danger, .app-content .badge.text-bg-danger { background-color: var(--sy-danger-soft) !important; color: var(--sy-danger) !important; }
+.app-content .badge.bg-info, .app-content .badge.text-bg-info { background-color: var(--sy-info-soft) !important; color: var(--sy-info) !important; }
+.app-content .badge.bg-secondary, .app-content .badge.text-bg-secondary { background-color: var(--sy-secondary-soft) !important; color: var(--sy-secondary) !important; }
+.app-content .badge.bg-dark, .app-content .badge.text-bg-dark { background-color: var(--sy-border-soft) !important; color: var(--sy-ink) !important; }
+.app-content .badge.bg-light { background-color: var(--sy-subtle-bg) !important; color: var(--sy-ink) !important; border-color: var(--sy-border) !important; }
+.app-content .badge.bg-primary, .app-content .badge.text-bg-primary { background: var(--sy-gradient-hero) !important; color: var(--sy-hero-ink) !important; }
+
+/* ============ Forms ============
+   Moderate rounding (not a full pill) — a pill-shaped text input reads
+   worse for longer content, so inputs/selects use --sy-radius-sm while
+   buttons/badges/segmented controls go fully round. */
+.app-content .form-control, .app-content .form-select {
+    background-color: var(--sy-surface);
+    border-color: var(--sy-border);
+    border-radius: var(--sy-radius-sm);
+    font-size: .87rem;
+    color: var(--sy-ink);
+}
+.app-content .form-control::placeholder { color: var(--sy-muted-soft); }
+.app-content .form-label { font-size: .82rem; font-weight: 600; color: var(--sy-ink); margin-bottom: .35rem; }
+.app-content .filter-form .form-select, .app-content .filter-form .form-control { border-radius: var(--sy-radius-sm); }
+
+/* A small exclusive filter group (status/date-range) styled as joined
+   pills instead of a dropdown — opt-in via .sy-segmented, reusable by any
+   module; doesn't replace existing <select>-based filters unless a page
+   chooses to. */
+.sy-segmented { display: inline-flex; background: var(--sy-bg); border-radius: var(--sy-radius-pill); padding: 3px; gap: 2px; }
+.sy-segmented .btn, .sy-segmented a { border-radius: var(--sy-radius-pill) !important; border: none; font-size: .8rem; font-weight: 600; padding: .38rem .9rem; color: var(--sy-muted); background: transparent; text-decoration: none; }
+.sy-segmented .btn.active, .sy-segmented a.active { background: var(--sy-surface); color: var(--sy-ink); box-shadow: var(--sy-shadow-sm); }
+
+/* ============ Alerts ============ */
+.app-content .alert { border: none; border-radius: var(--sy-radius-sm); font-size: .87rem; }
+.app-content .alert-success { background: var(--sy-success-soft); color: var(--sy-success); }
+.app-content .alert-danger { background: var(--sy-danger-soft); color: var(--sy-danger); }
+.app-content .alert-info { background: var(--sy-info-soft); color: var(--sy-info); }
+.app-content .alert-warning { background: var(--sy-warning-soft); color: var(--sy-warning); }
+
+/* ============ FullCalendar (Calendar module) ============
+   FullCalendar ships its own CSS custom properties for borders/backgrounds
+   (--fc-*) and otherwise inherits text/link color from its container —
+   neither tracks our tokens by default, so the grid was a fixed white
+   block with day numbers picked up by the global coral link color.
+   Re-pointing its variables + link colors at our tokens keeps it in
+   sync without touching the calendar's JS config. */
+.app-content #calendar {
+    --fc-border-color: var(--sy-border);
+    --fc-page-bg-color: var(--sy-surface);
+    --fc-neutral-bg-color: var(--sy-hover-bg);
+    --fc-list-event-hover-bg-color: var(--sy-hover-bg);
+    --fc-today-bg-color: var(--sy-accent-soft);
+    --fc-button-bg-color: var(--sy-ink);
+    --fc-button-border-color: var(--sy-ink);
+    --fc-button-hover-bg-color: var(--sy-accent-ink);
+    --fc-button-hover-border-color: var(--sy-accent-ink);
+    --fc-button-active-bg-color: var(--sy-accent-ink);
+    --fc-button-active-border-color: var(--sy-accent-ink);
+    color: var(--sy-ink);
+}
+.app-content #calendar a { color: var(--sy-ink); }
+.app-content #calendar .fc-day-other .fc-daygrid-day-number { color: var(--sy-muted-soft); }
+
+/* ============ List groups ============
+   Bootstrap's .list-group-item.active defaults to --bs-primary (blue) —
+   a different component/variable than the badge/button primary color
+   already retinted above, so it needs its own override (used by the
+   To-Do List filter sidebar, Notifications, and any future list-based
+   filter). */
+/* !important on color: the generic "a:not(.btn)..." link-color rule
+   below is a higher-specificity selector (four :not() clauses) than a
+   plain .list-group-item would otherwise beat, so a list-group link
+   would inherit that instead of a normal readable ink color. */
+.app-content .list-group-item { background-color: var(--sy-surface); border-color: var(--sy-border-soft); color: var(--sy-ink) !important; }
+.app-content .list-group-item-action:hover { background-color: var(--sy-hover-bg); color: var(--sy-ink) !important; }
+.app-content .list-group-item.active {
+    background: var(--sy-gradient-hero) !important;
+    border-color: transparent !important;
+    color: var(--sy-hero-ink) !important;
+}
+.app-content .list-group-item.active .badge { background-color: rgba(255, 255, 255, .22) !important; color: var(--sy-hero-ink) !important; }
+
+/* ============ Nav tabs ============ */
+.app-content .nav-tabs { border-bottom: 1px solid var(--sy-border); }
+.app-content .nav-tabs .nav-link { border: none; color: var(--sy-muted); font-weight: 600; font-size: .85rem; padding: .6rem .2rem; margin-right: 1.4rem; }
+.app-content .nav-tabs .nav-link.active { background: transparent; color: var(--sy-accent-ink); border-bottom: 2px solid var(--sy-accent-ink); }
+
+/* ============ Sidebar ============
+   Fixed solid purple, same in both themes (see the --sy-sidebar-* tokens'
+   own comment in :root) — data-bs-theme="dark" was removed from the
+   <aside> tag itself, so this file is the only thing controlling its
+   colors rather than Bootstrap's own dark-theme cascade fighting it. */
+.app-sidebar {
+    background: var(--sy-sidebar-bg) !important;
+    border-right: 1px solid var(--sy-sidebar-border);
+}
+.app-sidebar .brand-link { color: var(--sy-sidebar-ink); }
+/* Colors for the menu as it is actually rendered (ul.sidebar-menu — the
+   .nav-sidebar rules below target a class this layout doesn't use). Color
+   only, so AdminLTE keeps its own spacing. Needed now that the rail is
+   navy: AdminLTE's default dark-gray link text would be unreadable on it. */
+.app-sidebar .sidebar-menu .nav-link,
+.app-sidebar .sidebar-menu .nav-link p { color: var(--sy-sidebar-ink) !important; }
+.app-sidebar .sidebar-menu .nav-link .nav-icon { color: var(--sy-sidebar-muted) !important; }
+.app-sidebar .sidebar-menu .nav-link:hover:not(.active) { background: var(--sy-sidebar-hover-bg); }
+.app-sidebar .sidebar-menu .nav-link:hover:not(.active) .nav-icon { color: var(--sy-sidebar-ink) !important; }
+.app-sidebar .sidebar-menu .nav-link.active {
+    background: var(--sy-sidebar-active-bg) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+.app-sidebar .sidebar-menu .nav-link.active,
+.app-sidebar .sidebar-menu .nav-link.active p,
+.app-sidebar .sidebar-menu .nav-link.active .nav-icon { color: var(--sy-sidebar-active-ink) !important; }
+.app-sidebar .nav-header {
+    font-size: .66rem !important;
+    letter-spacing: 1px !important;
+    font-weight: 700 !important;
+    color: var(--sy-sidebar-header) !important;
+    padding: 14px 16px 6px !important;
+}
+/* !important throughout this default (non-active) state: AdminLTE ships
+   its own Bootstrap-variable-driven color for .nav-link/.nav-link p/
+   .nav-icon that a plain-specificity rule doesn't reliably beat, the
+   same reason the active/hover states below already needed it. */
+.app-sidebar .nav-sidebar .nav-link {
+    border-radius: var(--sy-radius-sm);
+    margin: 1px 8px;
+    padding: .55rem .7rem;
+    font-size: .85rem;
+    color: var(--sy-sidebar-ink) !important;
+}
+.app-sidebar .nav-sidebar .nav-link p { font-weight: 500; color: var(--sy-sidebar-ink) !important; }
+.app-sidebar .nav-sidebar .nav-link .nav-icon { color: var(--sy-sidebar-muted) !important; }
+/* Hover = a lighter overlay on the same purple, text stays white — NOT
+   the accent color, which would be purple-on-purple (invisible) now
+   that the rail itself is solid purple rather than white. */
+.app-sidebar .nav-sidebar .nav-link:hover:not(.active) { background: var(--sy-sidebar-hover-bg); }
+.app-sidebar .nav-sidebar .nav-link:hover:not(.active),
+.app-sidebar .nav-sidebar .nav-link:hover:not(.active) p,
+.app-sidebar .nav-sidebar .nav-link:hover:not(.active) .nav-icon { color: var(--sy-sidebar-ink) !important; }
+.app-sidebar .nav-sidebar > .nav-item > .nav-link.active p { font-weight: 600; }
+/* Active item inverts instead of using the hero gradient — a solid-white
+   pill with the icon/label in the sidebar's own purple, matching the
+   reference image exactly. */
+.app-sidebar .nav-sidebar > .nav-item > .nav-link.active {
+    background: var(--sy-sidebar-active-bg) !important;
+    color: var(--sy-sidebar-active-ink) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+.app-sidebar .nav-sidebar > .nav-item > .nav-link.active .nav-icon,
+.app-sidebar .nav-sidebar > .nav-item > .nav-link.active p { color: var(--sy-sidebar-active-ink) !important; }
+
+/* ============ Topbar company chip ============ */
+.sy-company-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--sy-bg);
+    border: 1px solid var(--sy-border);
+    border-radius: var(--sy-radius-pill);
+    padding: 6px 14px 6px 10px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--sy-ink);
+}
+.sy-company-chip .sy-company-dot {
+    width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0;
+    background: var(--sy-gradient-hero);
+    display: flex; align-items: center; justify-content: center; color: var(--sy-hero-ink); font-size: .68rem;
+}
+.sy-company-chip select.form-select {
+    border: none; background: transparent; box-shadow: none; padding: 0 1.4rem 0 0;
+    font-size: .82rem; font-weight: 600; color: var(--sy-ink); width: auto;
+}
+.sy-company-chip select.form-select:focus { box-shadow: none; }
+
+/* Topbar icon buttons (bell, avatar toggle, theme switch) — circular
+   hit target */
+.app-header.navbar { border-bottom: 1px solid var(--sy-border); background: var(--sy-surface); }
+.app-header .nav-link { border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: var(--sy-muted); }
+.app-header .nav-link:hover { background: var(--sy-accent-soft); color: var(--sy-accent-ink); }
+.app-header .nav-link.dropdown-toggle { width: auto; border-radius: var(--sy-radius-pill); padding: 4px 12px 4px 4px; }
+.app-header .nav-link.dropdown-toggle:hover { background: var(--sy-accent-soft); }
+.app-header .nav-link.dropdown-toggle::after { display: none; }
+.app-header .dropdown-menu { background: var(--sy-surface); border-color: var(--sy-border); color: var(--sy-ink); }
+.app-header .dropdown-item { color: var(--sy-ink); }
+.app-header .dropdown-item:hover { background: var(--sy-accent-soft); color: var(--sy-accent-ink); }
+
+/* ============ Reusable dashboard-style component classes ============
+   Promoted from the Dashboard view (identical selectors/values) so any
+   page can build a stat/list/quick-action card without redefining
+   these locally. */
+.sy-week-chip { display: inline-flex; align-items: center; background: var(--sy-surface); border: 1px solid var(--sy-border); border-radius: var(--sy-radius-pill); padding: 8px 14px; font-size: .82rem; color: var(--sy-ink); font-weight: 600; }
+.sy-stat-card { background: var(--sy-surface); border-radius: var(--sy-radius); padding: 16px 18px; border: 1px solid var(--sy-border-soft); height: 100%; }
+.sy-stat-icon { width: 38px; height: 38px; border-radius: var(--sy-radius-sm); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-size: 1rem; }
+.sy-stat-label { font-size: .74rem; color: var(--sy-muted); font-weight: 600; margin-bottom: 4px; }
+.sy-stat-value { font-size: 1.7rem; font-weight: 700; color: var(--sy-ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sy-stat-trend { font-size: .72rem; font-weight: 600; margin-top: 4px; }
+.sy-stat-spark { margin-top: 8px; height: 30px; }
+
+/* Hero variant — the headline KPI cards, opt-in via an added class on an
+   existing .sy-stat-card, never a separate component. A white card with a
+   light-red icon chip and a subtle red-tinted shadow. !important is needed
+   only on the icon chip, whose children carry an inline
+   style="background:...;color:..." that would otherwise win. */
+.sy-stat-card.sy-hero {
+    background: var(--sy-surface);
+    border: 1px solid var(--sy-border);
+    color: var(--sy-ink);
+    box-shadow: var(--sy-shadow-sm);
+}
+.sy-stat-card.sy-hero .sy-stat-icon { background: var(--sy-accent-soft) !important; color: var(--sy-accent-ink) !important; }
+.sy-stat-card.sy-hero .sy-stat-label { color: var(--sy-muted); }
+.sy-stat-card.sy-hero .sy-stat-value { color: var(--sy-ink); }
+.sy-stat-card.sy-hero .sy-stat-trend { color: var(--sy-muted); }
+
+.sy-card { background: var(--sy-surface); border-radius: var(--sy-radius); border: 1px solid var(--sy-border-soft); height: 100%; }
+.sy-card-header { padding: 14px 18px; border-bottom: 1px solid var(--sy-border-soft); display: flex; justify-content: space-between; align-items: center; }
+.sy-card-header strong { font-size: .92rem; color: var(--sy-ink); }
+.sy-card-header a { font-size: .78rem; color: var(--sy-accent-ink); }
+.sy-card-body { padding: 16px 18px; }
+
+.sy-progress-row + .sy-progress-row { margin-top: 14px; }
+.sy-progress-row .bar-track { height: 7px; border-radius: 6px; background: var(--sy-border-soft); overflow: hidden; margin-top: 6px; }
+.sy-progress-row .bar-fill { height: 100%; border-radius: 6px; }
+
+.sy-priority-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--sy-border-soft); }
+.sy-priority-item:last-child { border-bottom: none; }
+.sy-priority-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.sy-priority-item .title { font-size: .84rem; font-weight: 600; color: var(--sy-ink); }
+.sy-priority-item .subtitle { font-size: .74rem; color: var(--sy-muted); }
+
+/* Today's Priorities: holds its height at "top 4 items worth" on both
+   dashboards regardless of whether today has 0-4 items, so this card
+   never looks mismatched in height against its row neighbor. */
+.sy-priorities-body { min-height: 232px; }
+
+.sy-list-item { padding: 9px 0; border-bottom: 1px solid var(--sy-border-soft); font-size: .82rem; }
+.sy-list-item:last-child { border-bottom: none; }
+.sy-list-item .muted { color: var(--sy-muted); font-size: .74rem; }
+a:hover .sy-list-item { background: var(--sy-hover-bg); border-radius: 8px; }
+a.sy-progress-row { display: block; padding: 8px; margin: -8px; border-radius: 8px; transition: background .15s ease; }
+a.sy-progress-row:hover { background: var(--sy-hover-bg); }
+
+/* Needs Attention chips (Dashboard) — a clickable stat+shortlist card,
+   one per actionable category. */
+.sy-attention-card { background: var(--sy-subtle-bg); border-radius: var(--sy-radius-sm); padding: 12px 14px; height: 100%; transition: background .15s ease, transform .15s ease; }
+a:hover .sy-attention-card { background: var(--sy-hover-bg); transform: translateY(-1px); }
+
+/* Person-detail header (photo + name + meta row) — the "who is this
+   page about" banner shared by Employee Profile, Attendance History,
+   Leave History and the Offboarding detail page, so all four read as
+   one consistent pattern rather than four different headers. */
+.sy-pf-crumb { font-size: .78rem; color: var(--sy-muted); margin-bottom: 10px; }
+.sy-pf-crumb a { color: var(--sy-muted); text-decoration: none; }
+.sy-pf-photo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; flex: none; }
+.sy-pf-photo.initial { display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+.sy-pf-head h4 { margin: 0; font-size: 1.3rem; font-weight: 700; }
+.sy-pf-meta { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: .8rem; color: var(--sy-muted); margin-top: 6px; }
+.sy-pf-meta i { margin-right: 6px; color: var(--sy-muted-soft); }
+/* Label/value fact row — "Quick Info" style blocks reused by the same
+   four pages. */
+.sy-pf-row { display: flex; gap: 12px; padding: 7px 0; border-top: 1px solid var(--sy-border-soft); font-size: .82rem; }
+.sy-pf-row:first-child { border-top: 0; padding-top: 0; }
+.sy-pf-row .k { color: var(--sy-muted); width: 40%; flex: none; }
+.sy-pf-row .v { font-weight: 600; min-width: 0; word-break: break-word; }
+
+/* "Current Action" highlight card — shared by the Onboarding and
+   Offboarding detail pages so both read as the same pattern. */
+.sy-current-action { border-left: 3px solid var(--sy-accent-ink); background: var(--sy-accent-soft); border-radius: var(--sy-radius-sm); padding: 14px 16px; }
+.sy-current-action .title { font-weight: 700; color: var(--sy-ink); }
+.sy-current-action .meta { font-size: .78rem; color: var(--sy-muted); margin-top: 2px; }
+.sy-current-action .meta .overdue { color: var(--sy-danger); font-weight: 600; }
+
+/* Compact 3-step progress track (Onboarding) — a small horizontal
+   stepper for showing which broad stage a record is in. */
+.sy-track { display: flex; align-items: center; }
+.sy-track .step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; width: 92px; }
+.sy-track .step .dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .65rem; border: 2px solid var(--sy-border); color: transparent; background: var(--sy-surface); }
+.sy-track .step.done .dot { background: var(--sy-success); border-color: var(--sy-success); color: #fff; }
+.sy-track .step.current .dot { background: var(--sy-accent-ink); border-color: var(--sy-accent-ink); box-shadow: 0 0 0 4px var(--sy-accent-soft); }
+.sy-track .step .label { font-size: .74rem; font-weight: 600; color: var(--sy-muted); text-align: center; }
+.sy-track .step.current .label, .sy-track .step.done .label { color: var(--sy-ink); }
+.sy-track .line { flex: 1 1 auto; height: 2px; background: var(--sy-border); margin: 0 -4px 22px; }
+.sy-track .line.done { background: var(--sy-success); }
+
+/* Chart "no data" placeholder — swapped in for an empty canvas so a
+   chart with nothing to plot doesn't just render blank. */
+.sy-empty-chart { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 160px; color: var(--sy-muted-soft); font-size: .82rem; }
+.sy-empty-chart i { font-size: 1.6rem; }
+
+.sy-quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sy-quick-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border-radius: var(--sy-radius-sm); background: var(--sy-subtle-bg); text-decoration: none; color: var(--sy-ink); font-size: .72rem; font-weight: 600; text-align: center; }
+.sy-quick-btn:hover { background: var(--sy-accent-soft); color: var(--sy-accent-ink); }
+.sy-quick-btn i { font-size: 1.05rem; color: var(--sy-accent-ink); }
+
+/* Standalone headline figures built with Bootstrap's fs-4/fw-bold combo
+   (Dashboard's "Monthly Expenses" total, Financial Overview amounts,
+   etc.) — same tabular-nums treatment as .sy-stat-value/table cells,
+   scoped to content areas only so it never touches marketing-style
+   numerals elsewhere. */
+.app-content .fs-4.fw-bold { font-variant-numeric: tabular-nums; }
+
+/* ============ Responsive ============ */
+@media (max-width: 767.98px) {
+    .app-content-header h3 { font-size: 1.1rem; }
+    .sy-quick-grid { grid-template-columns: repeat(2, 1fr); }
+    .app-content .card-body { padding: 14px; }
+    .sy-stat-card, .sy-card { border-radius: var(--sy-radius-sm); }
+}
+
+/* ============ Multi-select filter dropdown ============
+   Checkbox-list dropdown used in place of a plain <select> for filter
+   fields where picking several values at once makes sense (Assigned To,
+   Status, etc. — see form.filter-form's global auto-submit JS in
+   layouts/main.php, which explicitly skips .sy-msel-opt checkboxes so
+   picks don't reload the page one at a time; an "Apply" button inside
+   the menu submits once instead). */
+.sy-msel-toggle {
+    width: 100%;
+    text-align: left;
+    background: var(--sy-surface);
+    border: 1px solid var(--sy-border);
+    color: var(--sy-ink);
+    font-size: .8125rem;
+    padding: .25rem .5rem;
+    border-radius: var(--sy-radius-sm, 6px);
+}
+.sy-msel-toggle:hover, .sy-msel-toggle:focus { background: var(--sy-surface); color: var(--sy-ink); }
+.sy-msel-menu { max-height: 260px; overflow-y: auto; min-width: 220px; padding: 6px; }
+.sy-msel-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: .85rem; padding: 5px 8px; border-radius: 4px; margin: 0; }
+.sy-msel-item:hover { background: var(--sy-hover-bg); }
+.sy-msel-opt { flex: none; margin: 0; cursor: pointer; }
+.sy-msel-apply { margin-top: 6px; }
+
+/* ============ Global print reset ============
+   layouts/main.php's .app-wrapper/.app-main-column are display:flex,
+   pinned to one viewport (height:100vh/100dvh) with overflow:hidden —
+   that's what makes this app's sidebar/topbar stay put while only the
+   content scrolls, but it also means anything printed from inside
+   (window.print() on a normal page, e.g. Employee Profile's "Print
+   profile") gets clipped to a single screen's worth of content by
+   those ancestors and often renders as a blank page, no matter what a
+   page's own local @media print rules reset further down the tree.
+   !important is required: the inline <style> block in main.php's
+   <head> that sets .app-wrapper's overflow/height loads after this
+   stylesheet, so it would otherwise win. A page with its own printable
+   document (Payslip, Offer Letter, Relieving Letter, …) can still
+   layer extra local @media print rules on top of this baseline. */
+@media print {
+    .app-wrapper, .app-main-column, .app-main, .app-content {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .app-sidebar, .app-header, .app-content-header, .app-footer, #backToTop {
+        display: none !important;
+    }
+}

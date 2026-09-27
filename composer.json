@@ -1,0 +1,66 @@
+{
+    "name": "sanvima/operations-erp",
+    "description": "Centralized Business Operations Management System (Sayeon) for Sanvima, Sayeon, Festive, Nihira and Intrepid.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.1",
+        "codeigniter4/framework": "^4.5",
+        "dompdf/dompdf": "^3.0",
+        "phpoffice/phpspreadsheet": "^1.29",
+        "aws/aws-sdk-php": "^3.300"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "kint-php/kint": "^6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "App\\Modules\\Auth\\": "app/Modules/Auth/",
+            "App\\Modules\\Company\\": "app/Modules/Company/",
+            "App\\Modules\\Department\\": "app/Modules/Department/",
+            "App\\Modules\\Task\\": "app/Modules/Task/",
+            "App\\Modules\\Dashboard\\": "app/Modules/Dashboard/",
+            "App\\Modules\\Meeting\\": "app/Modules/Meeting/",
+            "App\\Modules\\Compliance\\": "app/Modules/Compliance/",
+            "App\\Modules\\Calendar\\": "app/Modules/Calendar/",
+            "App\\Modules\\Notification\\": "app/Modules/Notification/",
+            "App\\Modules\\Report\\": "app/Modules/Report/",
+            "App\\Modules\\HR\\": "app/Modules/HR/",
+            "App\\Modules\\Expense\\": "app/Modules/Expense/",
+            "App\\Modules\\Accounting\\": "app/Modules/Accounting/",
+            "App\\Modules\\Website\\": "app/Modules/Website/",
+            "App\\Modules\\Document\\": "app/Modules/Document/",
+            "App\\Modules\\Marketing\\": "app/Modules/Marketing/",
+            "App\\Modules\\Onboarding\\": "app/Modules/Onboarding/",
+            "App\\Modules\\Offboarding\\": "app/Modules/Offboarding/",
+            "App\\Modules\\Policy\\": "app/Modules/Policy/",
+            "App\\Modules\\Purchase\\": "app/Modules/Purchase/",
+            "App\\Modules\\Support\\": "app/Modules/Support/",
+            "App\\Modules\\Todo\\": "app/Modules/Todo/"
+        },
+        "exclude-from-classmap": [
+            "**/Database/Migrations/**"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-update-cmd": [
+            "CodeIgniter\\ComposerScripts::postUpdate"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/installers": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
