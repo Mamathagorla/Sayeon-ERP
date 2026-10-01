@@ -33,6 +33,14 @@ class OnboardingRecordModel extends Model
 
     public const BGV_STATUSES = ['not_started', 'in_progress', 'cleared', 'flagged'];
 
+    // The candidate's own "please confirm your details" step (see the
+    // candidate-portal migration's docblock — distinct from HR's
+    // existing hr_verified_by/hr_verified_at, which is a byproduct of
+    // advancing the pipeline stage, not of anything the candidate
+    // submitted). null = link not generated/sent yet.
+    public const VERIFICATION_STATUSES = ['pending', 'submitted', 'verified', 'correction_needed'];
+    public const OFFER_RESPONSES = ['accepted', 'rejected'];
+
     /**
      * Pure display grouping — the 11 linear stages (+ withdrawn) collapsed
      * into 4 phases so the pipeline reads as a small number of milestones
@@ -91,6 +99,9 @@ class OnboardingRecordModel extends Model
     protected $allowedFields = [
         'company_id', 'candidate_name', 'candidate_email', 'candidate_phone',
         'department_id', 'designation', 'offered_ctc', 'reporting_manager_id', 'employee_profile_id',
+        'candidate_token', 'token_expires_at',
+        'verification_status', 'verification_submitted_at', 'verification_reviewed_by', 'verification_reviewed_at', 'verification_notes',
+        'offer_response', 'offer_response_at', 'offer_response_note',
         'status', 'offer_sent_at', 'offer_accepted_at', 'bgv_status', 'bgv_notes',
         'hr_verified_by', 'hr_verified_at', 'joining_date', 'joined_at',
         'probation_end_date', 'confirmed_at', 'created_by',
@@ -112,6 +123,10 @@ class OnboardingRecordModel extends Model
         'status'          => 'permit_empty|in_list[selected,offer_sent,offer_accepted,documents_pending,bgv,hr_verification,ready_to_join,joined,induction,probation,confirmed,withdrawn]',
         'bgv_status'      => 'permit_empty|in_list[not_started,in_progress,cleared,flagged]',
         'joining_date'    => 'permit_empty|valid_date',
+        'verification_status' => 'permit_empty|in_list[pending,submitted,verified,correction_needed]',
+        'verification_notes'  => 'permit_empty|max_length[2000]',
+        'offer_response'      => 'permit_empty|in_list[accepted,rejected]',
+        'offer_response_note' => 'permit_empty|max_length[2000]',
     ];
 
     protected $validationMessages = [
@@ -204,6 +219,51 @@ class OnboardingRecordModel extends Model
     public function withRelations(int $id): ?array
     {
         return $this->filtered()->where('onboarding_records.id', $id)->first();
+    }
+
+    /**
+     * The one onboarding record (if any) linked to this employee_profiles
+     * row — powers the employee's own "My Onboarding" self-view, which
+     * looks the candidate up by their linked profile rather than by
+     * record id (a plain employee never knows/should guess record ids).
+     */
+    public function byEmployeeProfileId(int $employeeProfileId): ?array
+    {
+        return $this->filtered()->where('onboarding_records.employee_profile_id', $employeeProfileId)->first();
+    }
+
+    /**
+     * Looks a record up purely by its candidate_token — the only lookup
+     * the public candidate portal is allowed to use (never a bare id in
+     * the URL). Token comparison itself happens in the controller via
+     * hash_equals() against the row this returns, same two-step pattern
+     * MeetingController::join() already uses for join_token.
+     */
+    public function findByToken(string $token): ?array
+    {
+        if ($token === '') {
+            return null;
+        }
+
+        return $this->where('candidate_token', $token)->first();
+    }
+
+    /**
+     * Issues a fresh random token + expiry for the candidate portal —
+     * called once per "send link" action. Overwrites any previous token
+     * (an old link stops working the moment a new one is generated),
+     * same one-active-link-at-a-time semantics as a password reset link.
+     */
+    public function issueToken(int $id, int $validDays = 7): string
+    {
+        $token = bin2hex(random_bytes(24));
+
+        $this->update($id, [
+            'candidate_token'  => $token,
+            'token_expires_at' => date('Y-m-d H:i:s', strtotime("+{$validDays} days")),
+        ]);
+
+        return $token;
     }
 
     /**

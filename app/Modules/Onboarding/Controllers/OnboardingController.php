@@ -53,6 +53,14 @@ class OnboardingController extends BaseController
 
     public function index()
     {
+        // A plain 'employee' now also carries onboarding.view (so they can
+        // reach their own record via mine()/show()) but must never see the
+        // company's full candidate pipeline — redirect them to their own
+        // record instead of listing here.
+        if (session('roleSlug') === 'employee') {
+            return redirect()->to('/hr/onboarding/mine');
+        }
+
         $getFilters = array_filter($this->request->getGet(['status', 'department_id', 'q', 'joining_from']) ?? []);
 
         // The Status filter/column only deals in the 3 simplified buckets
@@ -89,6 +97,26 @@ class OnboardingController extends BaseController
             'isOwner'      => in_array($roleSlug, self::OWNER_ROLES, true),
             'filters'      => $getFilters,
         ]);
+    }
+
+    /**
+     * "My Onboarding" — an ordinary employee's entry point to their own
+     * record. Looked up via their linked employee_profiles row (never by
+     * a record id they'd have to guess/be told), then handed off to the
+     * same show() every staff role already uses — show() itself carries
+     * the isSelfRecord() guard, so this stays safe even if the URL is
+     * bookmarked or typed directly.
+     */
+    public function mine()
+    {
+        $profile = $this->employeeModel->byUserId($this->currentUserId());
+        $record  = $profile !== null ? $this->recordModel->byEmployeeProfileId((int) $profile['id']) : null;
+
+        if ($record === null) {
+            return redirect()->to('/dashboard')->with('error', 'No onboarding record is linked to your profile yet.');
+        }
+
+        return $this->show((int) $record['id']);
     }
 
     public function create()
@@ -154,6 +182,18 @@ class OnboardingController extends BaseController
             return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
         }
 
+        $isSelf = $this->isSelfRecord($record);
+
+        // A plain 'employee' only holds onboarding.view for self-service —
+        // outOfScope() above already confirms same-company, but that alone
+        // would still let them open any colleague's candidate record, so
+        // this closes the gap: staff roles pass through unaffected (they
+        // never hit this branch), non-owner-non-self employees get sent
+        // back to their own record instead.
+        if (session('roleSlug') === 'employee' && ! $isSelf) {
+            return redirect()->to('/hr/onboarding/mine')->with('error', 'You can only view your own onboarding record.');
+        }
+
         $tasks = $this->taskModel->forRecord($id);
         // Grouped by PHASE (when it happens), not department — the
         // checklist's primary organizing axis per the redesign; each
@@ -201,14 +241,23 @@ class OnboardingController extends BaseController
                 ? $this->salaryModel->byUserId($this->employeeUserIdFor($record)) !== null
                 : false,
             'isOwner'        => $this->isOwner(),
+            'isSelf'         => $isSelf,
             'myRole'         => session('roleSlug'),
             'isReportingManager' => (int) ($record['reporting_manager_id'] ?? 0) === (int) $this->currentUserId(),
             // For the "Link Employee Record" picker — only offered once
             // HR needs it (record['employee_profile_id'] still null),
-            // scoped to the candidate's own company.
-            'employeeOptions' => $record['employee_profile_id']
-                ? []
-                : $this->employeeModel->filtered(['company_id' => $record['company_id']])->findAll(),
+            // scoped to the candidate's own company. Skipped entirely for
+            // a non-owner viewer (e.g. self-view) since that block never
+            // renders for them anyway — no point running the query.
+            'employeeOptions' => ($this->isOwner() && ! $record['employee_profile_id'])
+                ? $this->employeeModel->filtered(['company_id' => $record['company_id']])->findAll()
+                : [],
+            // Only a live (non-expired) link is shown/copyable — an
+            // expired one is indistinguishable from "none issued yet"
+            // as far as HR's next action goes (generate/resend either way).
+            'portalUrl' => ($record['candidate_token'] && $record['token_expires_at'] >= date('Y-m-d H:i:s'))
+                ? site_url("onboarding/portal/{$id}/{$record['candidate_token']}")
+                : null,
         ]);
     }
 
@@ -248,8 +297,8 @@ class OnboardingController extends BaseController
         if ($record === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $record['company_id'])) {
             return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
         }
-        if (! $this->isOwner()) {
-            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Only HR can view the offer letter.');
+        if (! $this->isOwner() && ! $this->isSelfRecord($record)) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'You do not have permission to view this offer letter.');
         }
 
         return view('App\Modules\Onboarding\offer_letter', [
@@ -277,8 +326,8 @@ class OnboardingController extends BaseController
         if ($record === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $record['company_id'])) {
             return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
         }
-        if (! $this->isOwner()) {
-            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Only HR can download the offer letter.');
+        if (! $this->isOwner() && ! $this->isSelfRecord($record)) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'You do not have permission to download this offer letter.');
         }
 
         $options = new Options();
@@ -295,6 +344,68 @@ class OnboardingController extends BaseController
         return $this->response
             ->setContentType('application/pdf')
             ->setHeader('Content-Disposition', 'attachment; filename="offer-letter-' . url_title($record['candidate_name'], '-', true) . '.pdf"')
+            ->setBody($dompdf->output());
+    }
+
+    /**
+     * Same access/rendering pattern as offerLetter() (staff or the
+     * candidate themselves once linked), but only meaningful once the
+     * candidate has actually joined — joined_at is the same timestamp
+     * updateStatus() sets when the record first reaches 'joined', so
+     * there's no separate "has a joining letter been issued" flag to
+     * track; the letter is simply generated on demand from the record's
+     * already-confirmed joining details.
+     */
+    public function joiningLetter(int $id)
+    {
+        $record = $this->recordModel->withRelations($id);
+
+        if ($record === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $record['company_id'])) {
+            return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
+        }
+        if (! $this->isOwner() && ! $this->isSelfRecord($record)) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'You do not have permission to view this joining letter.');
+        }
+        if ($record['joined_at'] === null) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'The joining letter is available once this candidate has joined.');
+        }
+
+        return view('App\Modules\Onboarding\joining_letter', [
+            'title'     => 'Joining Letter — ' . $record['candidate_name'],
+            'record'    => $record,
+            'company'   => $this->companyModel->find($record['company_id']),
+            'autoPrint' => $this->request->getGet('print') === '1',
+        ]);
+    }
+
+    public function joiningLetterPdf(int $id)
+    {
+        $record = $this->recordModel->withRelations($id);
+
+        if ($record === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $record['company_id'])) {
+            return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
+        }
+        if (! $this->isOwner() && ! $this->isSelfRecord($record)) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'You do not have permission to download this joining letter.');
+        }
+        if ($record['joined_at'] === null) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'The joining letter is available once this candidate has joined.');
+        }
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', false);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml(view('App\Modules\Onboarding\exports\joining_letter_pdf', [
+            'record'  => $record,
+            'company' => $this->companyModel->find($record['company_id']),
+        ]));
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        return $this->response
+            ->setContentType('application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="joining-letter-' . url_title($record['candidate_name'], '-', true) . '.pdf"')
             ->setBody($dompdf->output());
     }
 
@@ -444,6 +555,181 @@ class OnboardingController extends BaseController
         return redirect()->to('/hr/onboarding/' . $id)->with('success', 'Linked to the employee record.');
     }
 
+    /**
+     * "Send onboarding link" — real delivery via the in-app Notification
+     * system (this app has no working SMTP: .env's SMTPUser/SMTPPass are
+     * blank and nothing anywhere calls Config\Services::email(), so an
+     * "email sent" claim here would be fabricated). Only works once the
+     * candidate has a real login (employee_profile_id linked) — before
+     * that there is no account to notify and no separate public/
+     * token-based candidate portal exists to email a link to; the error
+     * message says so plainly rather than silently no-opping.
+     */
+    public function sendLink(int $id)
+    {
+        $record = $this->recordModel->find($id);
+
+        if ($record === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $record['company_id'])) {
+            return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
+        }
+
+        if (! $this->isOwner()) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Only HR can send the onboarding link.');
+        }
+
+        if (empty($record['employee_profile_id'])) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Link this candidate to an employee record first — there is no login to notify until then.');
+        }
+
+        $employee = $this->employeeModel->find((int) $record['employee_profile_id']);
+
+        if ($employee === null || empty($employee['user_id'])) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Could not find the linked employee\'s account.');
+        }
+
+        $this->notificationService->notify(
+            (int) $employee['user_id'],
+            'onboarding_link',
+            'Your Onboarding Information',
+            'You can now view your onboarding progress, offer letter and joining letter from your account.',
+            'onboarding',
+            $id
+        );
+        $this->logActivity('onboarding', 'update', $id, 'Sent the onboarding link notification to ' . $record['candidate_name']);
+
+        return redirect()->to('/hr/onboarding/' . $id)->with('success', 'Onboarding link sent — delivered in-app (this instance has no email/SMTP configured), visible next time they log in.');
+    }
+
+    /**
+     * Generates (or regenerates — an old link stops working the moment
+     * a new one is issued, see OnboardingRecordModel::issueToken()) the
+     * secure candidate-portal link and tries to actually email it.
+     * Distinct from sendLink() above, which only ever worked once a
+     * candidate already had a real ERP login linked — this is for the
+     * pre-hire stage that has none.
+     */
+    public function sendPortalLink(int $id)
+    {
+        $record = $this->recordModel->find($id);
+
+        if ($record === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $record['company_id'])) {
+            return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
+        }
+        if (! $this->isOwner()) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Only HR can send the onboarding portal link.');
+        }
+
+        $token     = $this->recordModel->issueToken($id);
+        $portalUrl = site_url("onboarding/portal/{$id}/{$token}");
+
+        $this->logActivity('onboarding', 'update', $id, 'Generated a new onboarding portal link for ' . $record['candidate_name']);
+
+        $sent = $this->attemptEmail(
+            $record['candidate_email'],
+            'Your Onboarding — ' . $record['candidate_name'],
+            "Hello {$record['candidate_name']},\n\nPlease use the link below to verify your details" .
+                ($record['offer_sent_at'] !== null ? ' and review your offer' : '') .
+                ":\n\n{$portalUrl}\n\nThis link is valid for 7 days."
+        );
+
+        $message = $sent
+            ? 'Portal link generated and emailed to ' . $record['candidate_email'] . '.'
+            : 'Portal link generated (shown below to copy/share — email delivery is not configured on this server, so it was not sent automatically).';
+
+        return redirect()->to('/hr/onboarding/' . $id)->with('success', $message);
+    }
+
+    /**
+     * HR's decision on what the candidate submitted through the portal
+     * (STEP 4). 'verified' leaves verification_notes exactly as the
+     * candidate left it — nothing here needs to overwrite their note.
+     * 'correction_needed' replaces it with HR's own message instead,
+     * which is what the portal then shows the candidate on their next
+     * visit (see portal/show.php) — the candidate's original note has
+     * already served its purpose once HR has read it here.
+     */
+    public function reviewVerification(int $id)
+    {
+        $record = $this->recordModel->find($id);
+
+        if ($record === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $record['company_id'])) {
+            return redirect()->to('/hr/onboarding')->with('error', 'Onboarding record not found.');
+        }
+        if (! $this->isOwner()) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Only HR can review candidate verification.');
+        }
+        // Deliberately NOT restricted to verification_status === 'submitted'
+        // only — HR must always be able to approve a candidate's details
+        // (e.g. one who never used the portal at all, or was verified
+        // by phone/in person), since the Offer Letter step is gated on
+        // this being 'verified' (see OnboardingPortalController) and
+        // that gate must never become a dead end HR can't get past.
+        if ($record['verification_status'] === 'verified') {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Already verified.');
+        }
+
+        $decision = $this->request->getPost('decision');
+        if (! in_array($decision, ['verified', 'correction_needed'], true)) {
+            return redirect()->to('/hr/onboarding/' . $id)->with('error', 'Invalid decision.');
+        }
+
+        $data = [
+            'verification_status'       => $decision,
+            'verification_reviewed_by'  => $this->currentUserId(),
+            'verification_reviewed_at'  => date('Y-m-d H:i:s'),
+        ];
+
+        if ($decision === 'correction_needed') {
+            $data['verification_notes'] = $this->request->getPost('notes') ?: 'Please review and resubmit your details.';
+        }
+
+        $this->recordModel->update($id, $data);
+        $this->logActivity(
+            'onboarding',
+            'update',
+            $id,
+            ($decision === 'verified' ? 'Verified' : 'Requested a correction on') . ' candidate-submitted information for ' . $record['candidate_name']
+        );
+
+        return redirect()->to('/hr/onboarding/' . $id)->with('success', $decision === 'verified' ? 'Marked as verified.' : 'Correction requested — the candidate will see your note.');
+    }
+
+    /**
+     * Attempts a real send via CI4's own Email service — only when SMTP
+     * is actually configured (an unconfigured blank host would otherwise
+     * hang the request trying to connect, and .env's email.SMTPHost is
+     * blank by default in this app, per the "no working SMTP" precedent
+     * documented on sendLink() above). Returns false on any failure so
+     * the caller can fall back to showing the link for manual sharing
+     * instead of ever claiming delivery that didn't happen.
+     */
+    private function attemptEmail(string $to, string $subject, string $message): bool
+    {
+        $config = config('Email');
+
+        // Host alone isn't enough — this app's .env ships a real
+        // smtp.gmail.com host with a deliberately blank SMTPUser/
+        // SMTPPass (no account attached yet), and attempting a connect
+        // with a real hostname but no credentials would still hang the
+        // request on a doomed handshake instead of failing fast.
+        if (empty($config->SMTPHost) || empty($config->SMTPUser) || empty($config->SMTPPass) || ! filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        try {
+            $email = \Config\Services::email();
+            $email->setTo($to);
+            $email->setSubject($subject);
+            $email->setMessage(nl2br(esc($message)));
+
+            return $email->send();
+        } catch (\Throwable $e) {
+            log_message('error', 'Onboarding portal email failed: ' . $e->getMessage());
+
+            return false;
+        }
+    }
+
     public function destroy(int $id)
     {
         $record = $this->recordModel->find($id);
@@ -463,6 +749,23 @@ class OnboardingController extends BaseController
     private function isOwner(): bool
     {
         return in_array(session('roleSlug'), self::OWNER_ROLES, true);
+    }
+
+    /**
+     * True when $record is linked to an employee_profiles row belonging
+     * to the currently logged-in user — the candidate viewing their own
+     * onboarding record. Unlinked candidates (no login yet) never match,
+     * which is correct: only a real account can "self-view".
+     */
+    private function isSelfRecord(array $record): bool
+    {
+        if (empty($record['employee_profile_id'])) {
+            return false;
+        }
+
+        $profile = $this->employeeModel->find((int) $record['employee_profile_id']);
+
+        return $profile !== null && (int) $profile['user_id'] === (int) $this->currentUserId();
     }
 
     private function employeeUserIdFor(array $record): ?int

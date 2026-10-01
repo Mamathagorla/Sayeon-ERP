@@ -14,7 +14,7 @@ class TodoModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'user_id', 'title', 'description', 'due_date', 'priority',
+        'user_id', 'parent_id', 'title', 'description', 'due_date', 'priority',
         'is_starred', 'is_completed', 'completed_at', 'is_trashed', 'trashed_at',
     ];
 
@@ -26,6 +26,7 @@ class TodoModel extends Model
         'title'    => 'required|min_length[1]|max_length[150]',
         'priority' => 'permit_empty|in_list[normal,important]',
         'due_date' => 'permit_empty|valid_date',
+        'parent_id' => 'permit_empty|integer',
     ];
 
     /**
@@ -53,6 +54,17 @@ class TodoModel extends Model
     {
         $today   = date('Y-m-d');
         $builder = $this->db->table('todos')->where('user_id', $userId);
+
+        // Every filter except 'trashed' is top-level only — a Sub-To-Do
+        // lives nested under its Parent (see childrenFor()) rather than
+        // as its own row here. 'trashed' is the one deliberate exception:
+        // it's a flat bin of everything deleted, parent or child, so a
+        // Sub-To-Do trashed on its own (its Parent left active) is still
+        // reachable to restore or permanently delete — nesting it under
+        // a non-trashed Parent here would hide it from Trash entirely.
+        if ($filter !== 'trashed') {
+            $builder->where('parent_id', null);
+        }
 
         switch ($filter) {
             case 'today':
@@ -87,9 +99,19 @@ class TodoModel extends Model
         }
 
         if ($search !== '') {
+            // Matches on the row's own title/description, OR on any of
+            // its Sub-To-Dos' — searching "cake" should surface a
+            // "Birthday" parent whose only match is its child "Buy
+            // cake", not just parents whose own text happens to match.
             $builder->groupStart()
                 ->like('title', $search)
                 ->orLike('description', $search)
+                ->orWhereIn('id', static function ($sub) use ($userId, $search) {
+                    return $sub->select('parent_id')->from('todos')
+                        ->where('user_id', $userId)
+                        ->where('parent_id IS NOT NULL')
+                        ->groupStart()->like('title', $search)->orLike('description', $search)->groupEnd();
+                })
                 ->groupEnd();
         }
 
@@ -148,19 +170,84 @@ class TodoModel extends Model
     public function countsFor(int $userId): array
     {
         $today = date('Y-m-d');
+        // Top-level only (see filteredBuilder()) — a Sub-To-Do isn't
+        // counted a second time on top of the Parent it belongs to.
+        $base  = fn () => $this->where('user_id', $userId)->where('parent_id', null);
         $open  = static fn ($b) => $b->where('is_completed', 0)->where('is_trashed', 0);
 
         return [
-            'all'       => $this->where('user_id', $userId)->where('is_trashed', 0)->countAllResults(),
-            'today'     => $open($this->where('user_id', $userId))->where('due_date', $today)->countAllResults(),
-            'upcoming'  => $open($this->where('user_id', $userId))->where('due_date >', $today)->countAllResults(),
-            'overdue'   => $open($this->where('user_id', $userId))->where('due_date <', $today)->countAllResults(),
-            'starred'   => $this->where('user_id', $userId)->where('is_trashed', 0)->where('is_starred', 1)->countAllResults(),
-            'important' => $this->where('user_id', $userId)->where('is_trashed', 0)->where('priority', 'important')->countAllResults(),
-            'normal'    => $this->where('user_id', $userId)->where('is_trashed', 0)->where('priority', 'normal')->countAllResults(),
-            'pending'   => $open($this->where('user_id', $userId))->groupStart()->where('due_date', null)->orWhere('due_date >=', $today)->groupEnd()->countAllResults(),
-            'completed' => $this->where('user_id', $userId)->where('is_trashed', 0)->where('is_completed', 1)->countAllResults(),
+            'all'       => $base()->where('is_trashed', 0)->countAllResults(),
+            'today'     => $open($base())->where('due_date', $today)->countAllResults(),
+            'upcoming'  => $open($base())->where('due_date >', $today)->countAllResults(),
+            'overdue'   => $open($base())->where('due_date <', $today)->countAllResults(),
+            'starred'   => $base()->where('is_trashed', 0)->where('is_starred', 1)->countAllResults(),
+            'important' => $base()->where('is_trashed', 0)->where('priority', 'important')->countAllResults(),
+            'normal'    => $base()->where('is_trashed', 0)->where('priority', 'normal')->countAllResults(),
+            'pending'   => $open($base())->groupStart()->where('due_date', null)->orWhere('due_date >=', $today)->groupEnd()->countAllResults(),
+            'completed' => $base()->where('is_trashed', 0)->where('is_completed', 1)->countAllResults(),
+            // Flat count, parent_id notwithstanding — matches the
+            // 'trashed' exception in filteredBuilder() above, so this
+            // badge always agrees with what the Trash filter shows.
             'trashed'   => $this->where('user_id', $userId)->where('is_trashed', 1)->countAllResults(),
         ];
+    }
+
+    /**
+     * Every Sub-To-Do for the given Parent To-Do ids, grouped by
+     * parent_id — one query for a whole page of parents rather than one
+     * per row. Sub-To-Dos travel with their parent's trashed state (see
+     * TodoController::trash()/restore(), which cascade explicitly), so
+     * this deliberately does NOT filter is_trashed — the view renders
+     * each child with the same status logic as a top-level row.
+     */
+    public function childrenFor(array $parentIds, int $userId): array
+    {
+        if ($parentIds === []) {
+            return [];
+        }
+
+        $rows = $this->where('user_id', $userId)
+            ->whereIn('parent_id', $parentIds)
+            ->orderBy('is_completed', 'ASC')
+            ->orderBy('created_at', 'ASC')
+            ->findAll();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['parent_id']][] = $row;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * "2/4 completed" for one Parent To-Do — same shape as
+     * TaskChecklistItemModel::progressFor() in the Task module, the
+     * closest existing precedent for a parent/children completion
+     * rollup in this app. A trashed Sub-To-Do no longer counts (it's
+     * effectively removed from the list), so total/done can both drop
+     * if one is trashed individually.
+     */
+    public function progressFor(array $children): array
+    {
+        $active = array_filter($children, static fn ($c) => ! $c['is_trashed']);
+        $total  = count($active);
+        $done   = count(array_filter($active, static fn ($c) => (int) $c['is_completed'] === 1));
+
+        return ['total' => $total, 'done' => $done, 'percent' => $total > 0 ? (int) round($done / $total * 100) : 0];
+    }
+
+    /**
+     * True only if $id is a Parent-eligible To-Do owned by $userId — it
+     * exists, isn't trashed, and (one level of nesting only, matching
+     * the "Birthday -> Buy cake / ..." example) doesn't itself already
+     * have a parent. TodoController::store() checks this before letting
+     * a posted parent_id attach a new Sub-To-Do to it.
+     */
+    public function isEligibleParent(int $id, int $userId): bool
+    {
+        $todo = $this->where('id', $id)->where('user_id', $userId)->where('is_trashed', 0)->first();
+
+        return $todo !== null && $todo['parent_id'] === null;
     }
 }

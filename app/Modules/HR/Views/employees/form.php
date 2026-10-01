@@ -18,11 +18,12 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Employee Code</label>
-                    <input type="text" name="employee_code" class="form-control" value="<?= esc($employee['employee_code'] ?? $nextCode) ?>" maxlength="20" pattern="[A-Za-z0-9\-]*" title="Letters, numbers and hyphens only" required>
+                    <input type="text" name="employee_code" id="employeeCodeInput" class="form-control" value="<?= esc($employee['employee_code'] ?? $nextCode) ?>" maxlength="20" pattern="[A-Za-z0-9\-]*" title="Letters, numbers and hyphens only" required>
+                    <?php if (! $employee): ?><div class="form-text">Suggested — each company has its own prefix/sequence; edit freely before saving.</div><?php endif; ?>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Company</label>
-                    <select name="company_id" class="form-select" required>
+                    <select name="company_id" id="employeeCompanySelect" class="form-select" required>
                         <option value="">Select company</option>
                         <?php foreach ($companies as $c): ?>
                             <option value="<?= $c['id'] ?>" <?= (($employee['company_id'] ?? null) == $c['id']) ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
@@ -94,3 +95,26 @@
     </div>
 </div>
 <?= $this->endSection() ?>
+
+<?php if (! $employee): ?>
+<?= $this->section('scripts') ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // company_id => suggested employee_code — only ever used to swap the
+    // preview shown before saving; the field stays freely editable and
+    // whatever is actually submitted is what gets saved.
+    const nextCodeByCompany = <?= json_encode($nextCodeByCompany) ?>;
+    const companySelect = document.getElementById('employeeCompanySelect');
+    const codeInput      = document.getElementById('employeeCodeInput');
+    let userEdited = false;
+
+    codeInput.addEventListener('input', function () { userEdited = true; });
+    companySelect.addEventListener('change', function () {
+        if (userEdited) return; // don't clobber a value the admin already typed
+        const suggestion = nextCodeByCompany[companySelect.value];
+        if (suggestion) codeInput.value = suggestion;
+    });
+});
+</script>
+<?= $this->endSection() ?>
+<?php endif; ?>

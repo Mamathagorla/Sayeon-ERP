@@ -94,7 +94,7 @@ $empTypeLabels = ['full_time' => 'Full Time', 'part_time' => 'Part Time', 'contr
 <body>
 
 <div class="toolbar">
-    <a href="<?= site_url('hr/onboarding/' . $record['id'] . '/offer-letter/pdf') ?>" class="secondary">Download PDF</a>
+    <a href="<?= $pdfUrl ?? site_url('hr/onboarding/' . $record['id'] . '/offer-letter/pdf') ?>" class="secondary">Download PDF</a>
     <button onclick="window.print()">Print</button>
 </div>
 

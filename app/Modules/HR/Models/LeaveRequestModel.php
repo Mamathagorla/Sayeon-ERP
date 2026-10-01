@@ -40,11 +40,17 @@ class LeaveRequestModel extends Model
 
     public function filtered(array $filters = [])
     {
+        // Left join (not inner) so a request from a user with no
+        // employee_profiles row yet still shows up, just with a blank
+        // Employee ID — filtering by company_id/department_id below is
+        // unaffected, since a WHERE on a LEFT-joined NULL column still
+        // excludes that row exactly as an INNER join would.
         $builder = $this->select('leave_requests.*, users.name as user_name, leave_types.name as leave_type_name,
-                approver.name as approver_name')
+                approver.name as approver_name, employee_profiles.employee_code as employee_code')
             ->join('users', 'users.id = leave_requests.user_id')
             ->join('leave_types', 'leave_types.id = leave_requests.leave_type_id')
-            ->join('users as approver', 'approver.id = leave_requests.approved_by', 'left');
+            ->join('users as approver', 'approver.id = leave_requests.approved_by', 'left')
+            ->join('employee_profiles', 'employee_profiles.user_id = leave_requests.user_id', 'left');
 
         if (! empty($filters['user_id'])) {
             $builder->where('leave_requests.user_id', $filters['user_id']);
@@ -62,12 +68,14 @@ class LeaveRequestModel extends Model
         if (! empty($filters['year'])) {
             $builder->where('YEAR(leave_requests.start_date)', $filters['year']);
         }
-        // Present (even as 0) only when the caller wants company scoping —
-        // 0 means "approver has no company assigned yet", which should
-        // match zero rows rather than falling through to showing everyone.
         if (array_key_exists('company_id', $filters)) {
-            $builder->join('employee_profiles', 'employee_profiles.user_id = leave_requests.user_id')
-                ->where('employee_profiles.company_id', $filters['company_id']);
+            $builder->where('employee_profiles.company_id', $filters['company_id']);
+        }
+        if (! empty($filters['department_id'])) {
+            $builder->where('employee_profiles.department_id', $filters['department_id']);
+        }
+        if (! empty($filters['q'])) {
+            $builder->like('users.name', $filters['q']);
         }
         // Restricts to requesters whose role is within the approver's
         // authority (see LeaveController::ROLE_RANK). An empty array
@@ -102,5 +110,26 @@ class LeaveRequestModel extends Model
             ->where('status', 'approved')
             ->where('YEAR(start_date)', date('Y'))
             ->first()['days'] ?? 0);
+    }
+
+    /**
+     * Approved days on an unpaid leave type (leave_types.is_paid = 0)
+     * starting in $month/$year — feeds PayrollController::generate()'s
+     * Loss-of-Pay calculation. Keyed by start_date's month/year, same
+     * simplification approvedDaysThisYear() already uses (no cross-month
+     * split for a leave spanning two months) rather than a real date-range
+     * overlap, consistent with this model's existing "no half-day/
+     * working-day logic in v1" scope.
+     */
+    public function unpaidDaysInMonth(int $userId, int $month, int $year): float
+    {
+        return (float) ($this->select('COALESCE(SUM(leave_requests.days), 0) as total')
+            ->join('leave_types', 'leave_types.id = leave_requests.leave_type_id')
+            ->where('leave_requests.user_id', $userId)
+            ->where('leave_requests.status', 'approved')
+            ->where('leave_types.is_paid', 0)
+            ->where('MONTH(leave_requests.start_date)', $month)
+            ->where('YEAR(leave_requests.start_date)', $year)
+            ->first()['total'] ?? 0);
     }
 }

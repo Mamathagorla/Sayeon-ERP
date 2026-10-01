@@ -54,7 +54,7 @@ $exportRows = array_map(static fn (array $r) => [
 
 <!-- KPI cards -->
 <div class="row row-cols-2 row-cols-lg-4 g-3 mb-3">
-    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">ATTENDANCE</div><div class="sy-stat-value"><?= $summary['pct'] !== null ? $summary['pct'] . '%' : '—' ?></div></div></div>
+    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">TOTAL WORKING DAYS</div><div class="sy-stat-value"><?= $summary['workingDays'] ?></div></div></div>
     <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">PRESENT</div><div class="sy-stat-value"><?= $summary['onTime'] ?> <small class="fs-6 text-muted">days</small></div></div></div>
     <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">LATE</div><div class="sy-stat-value"><?= $summary['late'] ?> <small class="fs-6 text-muted">days</small></div></div></div>
     <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">ABSENT</div><div class="sy-stat-value"><?= $summary['absent'] ?> <small class="fs-6 text-muted">days</small></div></div></div>

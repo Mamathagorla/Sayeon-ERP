@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('pageActions') ?>
+<?php if (can('compliance.edit')): ?>
+<a href="<?= site_url('compliance/types/settings') ?>" class="btn btn-outline-secondary btn-sm" title="Choose which compliance types apply to a company"><i class="fas fa-sliders me-1"></i>Compliance Types</a>
+<form action="<?= site_url('compliance/generate-recurring') ?>" method="post" class="d-inline">
+    <?= csrf_field() ?>
+    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Create the next cycle for any recurring item nearing its due date that doesn't have one yet"><i class="fas fa-rotate me-1"></i>Generate Next Cycles</button>
+</form>
+<?php endif; ?>
 <?php if (in_array('compliance.create', session('permissions') ?? [], true) || session('roleSlug') === 'super_admin'): ?>
 <a href="<?= site_url('compliance/create') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>Add Compliance Item</a>
 <?php endif; ?>

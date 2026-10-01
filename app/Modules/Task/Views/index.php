@@ -132,7 +132,10 @@
             <?php foreach ($tasks as $t): ?>
                 <?php $isOverdue = $t['due_date'] && $t['due_date'] < date('Y-m-d') && ! in_array($t['status'], ['completed', 'cancelled'], true); ?>
                 <tr class="<?= $isOverdue ? 'table-danger' : '' ?>">
-                    <td><a href="<?= site_url('tasks/' . $t['id']) ?>"><?= esc($t['title']) ?></a></td>
+                    <td>
+                        <a href="<?= site_url('tasks/' . $t['id']) ?>"><?= esc($t['title']) ?></a>
+                        <?php if (! empty($t['task_code'])): ?><div class="text-muted small"><?= esc($t['task_code']) ?></div><?php endif; ?>
+                    </td>
                     <td><?= esc($t['company_name']) ?></td>
                     <td><?php if ($t['project_id']): ?><a href="<?= site_url('projects/' . $t['project_id']) ?>"><?= esc($t['project_name']) ?></a><?php else: ?>—<?php endif; ?></td>
                     <td><?= esc($t['department_name']) ?></td>

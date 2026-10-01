@@ -40,7 +40,16 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
-            'auth' => ['except' => ['auth/login', 'auth/attempt-login', 'assets/*']],
+            // 'onboarding/portal/*' is the candidate-facing onboarding
+            // portal (verify details / respond to an offer) — a
+            // pre-hire candidate has no ERP login by design (see
+            // OnboardingRecordModel's own docblock), so it can't sit
+            // behind the normal auth wall. Access is instead entirely
+            // by possession of a random per-candidate token, checked
+            // with hash_equals() in OnboardingPortalController — same
+            // token-gated-not-login-gated pattern already used for
+            // meeting join links.
+            'auth' => ['except' => ['auth/login', 'auth/attempt-login', 'assets/*', 'onboarding/portal/*']],
         ],
         'after' => [],
     ];

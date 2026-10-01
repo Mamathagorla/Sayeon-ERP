@@ -11,18 +11,57 @@ class ProjectModel extends Model
     protected $table         = 'projects';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
-    protected $allowedFields = ['company_id', 'name', 'description', 'status', 'start_date', 'end_date', 'owner_id'];
+    protected $allowedFields = ['company_id', 'project_code', 'name', 'description', 'status', 'start_date', 'end_date', 'owner_id'];
     protected $useTimestamps = true;
 
     protected $validationRules = [
-        'company_id' => 'required|is_natural_no_zero',
-        'name'       => 'required|min_length[2]|max_length[150]',
-        'status'     => 'required|in_list[active,completed,on_hold,cancelled]',
+        'company_id'   => 'required|is_natural_no_zero',
+        'name'         => 'required|min_length[2]|max_length[150]',
+        'status'       => 'required|in_list[active,completed,on_hold,cancelled]',
+        'project_code' => 'permit_empty|max_length[30]|is_unique[projects.project_code,id,{id}]',
     ];
+
+    /**
+     * getValidationRules() with project_code's {id} placeholder actually
+     * resolved — same fix, same reasoning as TaskModel::validationRulesFor()
+     * (CI4's {id} placeholder never resolves from a route param, so the
+     * bare rule silently fails to exclude the project's own row on
+     * update). Call this in update(), not getValidationRules(), and pair
+     * with skipValidation(true) on the ->update() call itself.
+     */
+    public function validationRulesFor(?int $excludeId = null): array
+    {
+        $rules = $this->validationRules;
+        $rules['project_code'] = 'permit_empty|max_length[30]|is_unique[projects.project_code,id,' . ($excludeId ?? 0) . ']';
+
+        return $rules;
+    }
 
     public function optionsForCompany(int $companyId): array
     {
         return $this->where('company_id', $companyId)->orderBy('name', 'ASC')->findAll();
+    }
+
+    /**
+     * A suggested project_code for $companyId — short and company-
+     * prefixed, e.g. 'SAY-P001'. Same shape/reasoning as
+     * EmployeeProfileModel::nextEmployeeCode(): companies.short_code as
+     * the prefix, a per-company scan-based preview (see
+     * next_company_sequence_number() in company_code_helper.php), no
+     * separate counter to burn/desync. Returns null when the company has
+     * no short_code set yet, so the caller can fall back to leaving the
+     * field blank/optional.
+     */
+    public function nextProjectCode(int $companyId): ?string
+    {
+        $shortCode = company_short_code($companyId);
+        if ($shortCode === null || $shortCode === '') {
+            return null;
+        }
+
+        $prefix = $shortCode . '-P';
+
+        return $prefix . str_pad((string) next_company_sequence_number('projects', 'project_code', $companyId, $prefix), 3, '0', STR_PAD_LEFT);
     }
 
     /**

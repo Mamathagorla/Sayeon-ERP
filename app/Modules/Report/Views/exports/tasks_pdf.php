@@ -25,10 +25,11 @@
     </div>
 
     <table>
-        <thead><tr><th>Title</th><th>Company</th><th>Department</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Due Date</th></tr></thead>
+        <thead><tr><th>Task ID</th><th>Title</th><th>Company</th><th>Department</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Due Date</th></tr></thead>
         <tbody>
         <?php foreach ($tasks as $t): ?>
             <tr class="<?= ($t['due_date'] && $t['due_date'] < date('Y-m-d') && ! in_array($t['status'], ['completed', 'cancelled'], true)) ? 'overdue' : '' ?>">
+                <td><?= esc($t['task_code'] ?? '-') ?></td>
                 <td><?= esc($t['title']) ?></td>
                 <td><?= esc($t['company_name']) ?></td>
                 <td><?= esc($t['department_name']) ?></td>

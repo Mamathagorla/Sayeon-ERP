@@ -64,9 +64,9 @@ class ReportController extends BaseController
         if ($format === 'csv') {
             return $this->streamCsv(
                 'task-summary-' . date('Y-m-d') . '.csv',
-                ['Title', 'Company', 'Department', 'Assignee', 'Priority', 'Status', 'Due Date'],
+                ['Task ID', 'Title', 'Company', 'Department', 'Assignee', 'Priority', 'Status', 'Due Date'],
                 array_map(static fn (array $t) => [
-                    $t['title'], $t['company_name'], $t['department_name'],
+                    $t['task_code'] ?? '', $t['title'], $t['company_name'], $t['department_name'],
                     $t['assignee_name'] ?? 'Unassigned', ucfirst($t['priority']),
                     ucwords(str_replace('_', ' ', $t['status'])), $t['due_date'] ?? '',
                 ], $data['tasks'])

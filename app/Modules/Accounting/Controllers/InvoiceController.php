@@ -8,6 +8,9 @@ use App\Modules\Accounting\Models\InvoiceModel;
 use App\Modules\Accounting\Models\PaymentModel;
 use App\Modules\Company\Models\BankAccountModel;
 use App\Modules\Company\Models\CompanyModel;
+use App\Modules\Company\Models\CountryModel;
+use App\Modules\Company\Models\StateModel;
+use App\Modules\Customer\Models\CustomerModel;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -18,6 +21,9 @@ class InvoiceController extends BaseController
     protected PaymentModel $paymentModel;
     protected CompanyModel $companyModel;
     protected BankAccountModel $bankModel;
+    protected CountryModel $countryModel;
+    protected StateModel $stateModel;
+    protected CustomerModel $customerModel;
 
     public function __construct()
     {
@@ -26,6 +32,9 @@ class InvoiceController extends BaseController
         $this->paymentModel = new PaymentModel();
         $this->companyModel = new CompanyModel();
         $this->bankModel    = new BankAccountModel();
+        $this->countryModel = new CountryModel();
+        $this->stateModel   = new StateModel();
+        $this->customerModel = new CustomerModel();
     }
 
     public function index()
@@ -70,11 +79,13 @@ class InvoiceController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Add at least one item with a description, quantity and rate.');
         }
 
+        $gstType = $this->resolveGstType();
+
         $totals = $this->invoiceModel->calculateTotals(
             $items,
             (float) ($this->request->getPost('discount_percent') ?: 0),
             (float) ($this->request->getPost('gst_percent') ?: 0),
-            (string) $this->request->getPost('gst_type')
+            $gstType
         );
 
         if ($totals['amount'] > InvoiceModel::MAX_AMOUNT) {
@@ -90,7 +101,7 @@ class InvoiceController extends BaseController
         // unique check against an empty id and update() returns false
         // without throwing, discarding the change with no visible error.
         $this->invoiceModel->skipValidation(true);
-        $id = $this->invoiceModel->insert($this->payload(true, $totals));
+        $id = $this->invoiceModel->insert($this->payload(true, $totals, $gstType));
         $this->itemModel->replaceForInvoice($id, $totals['items']);
         $this->logActivity('accounting', 'create', $id, 'Created invoice ' . $this->request->getPost('invoice_number'));
 
@@ -237,11 +248,13 @@ class InvoiceController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Add at least one item with a description, quantity and rate.');
         }
 
+        $gstType = $this->resolveGstType();
+
         $totals = $this->invoiceModel->calculateTotals(
             $items,
             (float) ($this->request->getPost('discount_percent') ?: 0),
             (float) ($this->request->getPost('gst_percent') ?: 0),
-            (string) $this->request->getPost('gst_type')
+            $gstType
         );
 
         if ($totals['amount'] > InvoiceModel::MAX_AMOUNT) {
@@ -249,7 +262,7 @@ class InvoiceController extends BaseController
         }
 
         $this->invoiceModel->skipValidation(true);
-        $this->invoiceModel->update($id, $this->payload(false, $totals));
+        $this->invoiceModel->update($id, $this->payload(false, $totals, $gstType));
         $this->itemModel->replaceForInvoice($id, $totals['items']);
         $this->logActivity('accounting', 'update', $id, 'Updated invoice #' . $id);
 
@@ -272,33 +285,76 @@ class InvoiceController extends BaseController
 
     private function formData(?array $invoice): array
     {
+        // company_id => state_id, so the form's JS can compare the
+        // selling company's state against the customer's selected state
+        // and auto-set GST Type — the actual authoritative gst_type is
+        // still recomputed server-side in payload(), this is just so the
+        // dropdown reflects the right value before submit.
+        $companyStateById = array_column($this->companyModel->select('id, state_id')->findAll(), 'state_id', 'id');
+        $companies        = $this->scopedCompanyOptions($this->companyModel->optionsList());
+
+        // One preview invoice_number per company — same "swap the
+        // suggestion via JS when the Company dropdown changes" pattern
+        // as the Employee create form's nextCodeByCompany.
+        $nextNumberByCompany = [];
+        // Customers grouped by company_id, only for companies this user
+        // can already see (scopedCompanyOptions() above) — the same
+        // scoping the rest of the form's dropdowns rely on, since these
+        // rows get embedded directly into page JS for the "pick an
+        // existing customer" convenience below.
+        $customersByCompany = [];
+        foreach ($companies as $c) {
+            $nextNumberByCompany[$c['id']] = $this->invoiceModel->nextInvoiceNumber((int) $c['id']);
+            $customersByCompany[$c['id']]  = array_map(static fn (array $cust) => [
+                'id'         => (int) $cust['id'],
+                'name'       => $cust['name'],
+                'email'      => $cust['email'],
+                'phone'      => $cust['phone'],
+                'gstin'      => $cust['gstin'],
+                'address'    => $cust['address'],
+                'country_id' => $cust['country_id'],
+                'state_id'   => $cust['state_id'],
+                'city'       => $cust['city'],
+            ], $this->customerModel->optionsForCompany((int) $c['id']));
+        }
+
         return [
-            'title'      => $invoice ? 'Edit Invoice' : 'Create Invoice',
-            'navActive'  => 'accounting',
-            'invoice'    => $invoice,
-            'items'      => $invoice ? $this->itemModel->forInvoice($invoice['id']) : [],
-            'companies'  => $this->scopedCompanyOptions($this->companyModel->optionsList()),
-            'statuses'   => InvoiceModel::STATUSES,
-            'gstTypes'   => InvoiceModel::GST_TYPES,
-            'nextNumber' => $invoice['invoice_number'] ?? $this->invoiceModel->nextInvoiceNumber(),
+            'title'            => $invoice ? 'Edit Invoice' : 'Create Invoice',
+            'navActive'        => 'accounting',
+            'invoice'          => $invoice,
+            'items'            => $invoice ? $this->itemModel->forInvoice($invoice['id']) : [],
+            'companies'        => $companies,
+            'companyStateById' => $companyStateById,
+            'countries'        => $this->countryModel->optionsList(),
+            'statesByCountry'  => $this->stateModel->allGroupedByCountry(),
+            'customersByCompany' => $customersByCompany,
+            'statuses'         => InvoiceModel::STATUSES,
+            'gstTypes'         => InvoiceModel::GST_TYPES,
+            'gstRateSlabs'     => gst_rate_slabs(),
+            'nextNumberByCompany' => $nextNumberByCompany,
+            'nextNumber'       => $invoice['invoice_number'] ?? ($nextNumberByCompany[$companies[0]['id'] ?? 0] ?? $this->invoiceModel->nextInvoiceNumber()),
         ];
     }
 
-    private function payload(bool $isNew, array $totals): array
+    private function payload(bool $isNew, array $totals, string $gstType): array
     {
         $data = [
-            'company_id'        => (int) $this->request->getPost('company_id'),
-            'invoice_number'    => $this->request->getPost('invoice_number'),
-            'customer_name'     => $this->request->getPost('customer_name'),
-            'customer_email'    => $this->request->getPost('customer_email') ?: null,
-            'customer_phone'    => $this->request->getPost('customer_phone') ?: null,
-            'customer_gstin'    => $this->request->getPost('customer_gstin') ?: null,
-            'customer_address'  => $this->request->getPost('customer_address') ?: null,
+            'company_id'          => (int) $this->request->getPost('company_id'),
+            'customer_id'         => $this->resolveCustomerId(),
+            'invoice_number'      => $this->request->getPost('invoice_number'),
+            'customer_name'       => $this->request->getPost('customer_name'),
+            'customer_email'      => $this->request->getPost('customer_email') ?: null,
+            'customer_phone'      => $this->request->getPost('customer_phone') ?: null,
+            'customer_gstin'      => $this->request->getPost('customer_gstin') ?: null,
+            'customer_address'    => $this->request->getPost('customer_address') ?: null,
+            'customer_country_id' => $this->request->getPost('customer_country_id') ?: null,
+            'customer_state_id'   => $this->request->getPost('customer_state_id') ?: null,
+            'customer_city'       => $this->request->getPost('customer_city') ?: null,
             'issue_date'        => $this->request->getPost('issue_date'),
             'due_date'          => $this->request->getPost('due_date') ?: null,
             'status'            => $this->request->getPost('status') ?: 'draft',
             'notes'             => $this->request->getPost('notes'),
-            'gst_type'          => $this->request->getPost('gst_type'),
+            'gst_type'          => $gstType,
             'gst_percent'       => $this->request->getPost('gst_percent') ?: 0,
             'discount_percent'  => $this->request->getPost('discount_percent') ?: 0,
             'subtotal'          => $totals['subtotal'],
@@ -348,5 +404,46 @@ class InvoiceController extends BaseController
         }
 
         return $items === [] ? null : $items;
+    }
+
+    /**
+     * The authoritative GST Type for this submission — server-side, not
+     * whatever the form posted, so it can't be spoofed or left stale by
+     * JS not running. Derived from the invoice's company's state vs the
+     * posted customer_state_id (determine_gst_type() — see gst_helper.php);
+     * falls back to the posted value only when either state is unknown,
+     * which keeps every invoice from before this feature (no state on
+     * either side yet) working exactly as it did.
+     */
+    private function resolveGstType(): string
+    {
+        $company = $this->companyModel->find((int) $this->request->getPost('company_id'));
+        $customerStateId = $this->request->getPost('customer_state_id') ?: null;
+
+        return determine_gst_type($company['state_id'] ?? null, $customerStateId ? (int) $customerStateId : null)
+            ?? (string) $this->request->getPost('gst_type');
+    }
+
+    /**
+     * The posted customer_id (from the "pick an existing customer"
+     * dropdown on the form), only if it's a real, non-deleted Customer
+     * that actually belongs to the posted company — never trusted as-is,
+     * same reasoning as isEligibleParent() in the To-Do module: a
+     * mismatched/spoofed id is silently dropped to null (falls back to
+     * the free-text customer_* snapshot fields) rather than erroring,
+     * since customer_id is only ever a convenience pointer.
+     */
+    private function resolveCustomerId(): ?int
+    {
+        $customerId = $this->request->getPost('customer_id');
+        if (! $customerId) {
+            return null;
+        }
+
+        $customer = $this->customerModel->find((int) $customerId);
+
+        return ($customer !== null && (int) $customer['company_id'] === (int) $this->request->getPost('company_id'))
+            ? (int) $customerId
+            : null;
     }
 }

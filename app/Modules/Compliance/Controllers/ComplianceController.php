@@ -5,9 +5,11 @@ namespace App\Modules\Compliance\Controllers;
 use App\Controllers\BaseController;
 use App\Modules\Auth\Models\UserModel;
 use App\Modules\Company\Models\CompanyModel;
+use App\Modules\Compliance\Models\CompanyComplianceTypeModel;
 use App\Modules\Compliance\Models\ComplianceAttachmentModel;
 use App\Modules\Compliance\Models\ComplianceItemModel;
 use App\Modules\Compliance\Models\ComplianceTypeModel;
+use App\Modules\Compliance\Services\ComplianceRecurrenceGenerator;
 use App\Modules\Compliance\Services\ComplianceRecurrenceService;
 use App\Modules\Notification\Services\NotificationService;
 
@@ -20,6 +22,7 @@ class ComplianceController extends BaseController
     protected CompanyModel $companyModel;
     protected UserModel $userModel;
     protected NotificationService $notificationService;
+    protected CompanyComplianceTypeModel $companyTypeModel;
 
     public function __construct()
     {
@@ -30,6 +33,7 @@ class ComplianceController extends BaseController
         $this->companyModel      = new CompanyModel();
         $this->userModel         = new UserModel();
         $this->notificationService = new NotificationService();
+        $this->companyTypeModel  = new CompanyComplianceTypeModel();
     }
 
     public function index()
@@ -169,6 +173,32 @@ class ComplianceController extends BaseController
         return redirect()->to('/compliance/' . $id)->with('success', $message);
     }
 
+    /**
+     * Manual, on-demand catch-up — same reasoning as
+     * RecurringExpenseController::generateNow()/RecurringMeetingController::
+     * generateNow(): scoped to the viewer's own company (or every company
+     * for an unrestricted Super Admin), runs the exact same generator the
+     * daily auto-trigger and the production cron/CLI command use.
+     */
+    public function generateRecurring()
+    {
+        $companyScope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
+
+        $result = $companyScope !== null
+            ? (new ComplianceRecurrenceGenerator())->runForCompany($companyScope)
+            : (new ComplianceRecurrenceGenerator())->runAll();
+
+        if ($result['itemsGenerated'] > 0) {
+            $this->logActivity('compliance', 'create', null, "Generated the next cycle for {$result['itemsGenerated']} compliance item(s).");
+        }
+
+        $message = $result['itemsGenerated'] > 0
+            ? "Generated the next cycle for {$result['itemsGenerated']} compliance item(s)."
+            : 'Nothing due to generate right now.';
+
+        return redirect()->to('/compliance')->with('success', $message);
+    }
+
     public function uploadAttachment(int $id)
     {
         if ($this->authorizedItem($id) === null) {
@@ -252,16 +282,112 @@ class ComplianceController extends BaseController
 
     private function formData(?array $item, ?int $defaultCompanyId = null): array
     {
+        $allTypes = $this->typeModel->optionsList();
+
+        // company_id => the types actually applicable to it — only for
+        // companies that have configured a subset (see
+        // CompanyComplianceTypeModel::applicableIdsByCompany()); a
+        // company absent from this map has never configured one, so the
+        // form's JS falls back to showing every type for it, exactly as
+        // it did before this feature existed.
+        $applicableByCompany = $this->companyTypeModel->applicableIdsByCompany();
+        $typesByCompany = [];
+        foreach ($applicableByCompany as $companyId => $typeIds) {
+            $typesByCompany[$companyId] = array_values(array_filter(
+                $allTypes,
+                static fn (array $t) => in_array((int) $t['id'], $typeIds, true)
+            ));
+        }
+
         return [
             'title'             => $item ? 'Edit Compliance Item' : 'Add Compliance Item',
             'navActive'         => 'compliance',
             'item'              => $item,
             'defaultCompanyId'  => $defaultCompanyId,
             'companies'         => $this->scopedCompanyOptions($this->companyModel->optionsList()),
-            'types'             => $this->typeModel->optionsList(),
+            'types'             => $allTypes,
+            'typesByCompany'    => $typesByCompany,
             'users'             => $this->scopedUserOptions($this->userModel->listForOptions()),
             'statuses'          => ComplianceItemModel::STATUSES,
         ];
+    }
+
+    /**
+     * "Which compliance types apply to this company" settings page —
+     * checkboxes over the shared global type list, scoped the same way
+     * every other admin screen picks a company (companyScopeFor() for a
+     * scoped role, an explicit ?company_id= for an unrestricted Super
+     * Admin).
+     */
+    public function typeSettings()
+    {
+        $companyScope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
+        $companyId    = $companyScope ?? (int) ($this->request->getGet('company_id') ?: 0);
+
+        $companies = $this->scopedCompanyOptions($this->companyModel->optionsList());
+        if ($companyId === 0 && count($companies) > 0) {
+            $companyId = (int) $companies[0]['id'];
+        }
+
+        if ($companyId !== 0 && $this->outOfScope(self::COMPANY_SCOPED_ROLES, $companyId)) {
+            return redirect()->to('/compliance')->with('error', 'You can only manage your own company.');
+        }
+
+        return view('App\Modules\Compliance\type_settings', [
+            'title'          => 'Company Compliance Types',
+            'navActive'      => 'compliance',
+            'companies'      => $companies,
+            'selectedCompanyId' => $companyId,
+            'types'          => $this->typeModel->optionsList(),
+            'applicableIds'  => $companyId !== 0 ? $this->companyTypeModel->applicableIdsFor($companyId) : [],
+        ]);
+    }
+
+    public function saveTypeSettings()
+    {
+        $companyId = (int) $this->request->getPost('company_id');
+
+        if ($companyId === 0 || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $companyId)) {
+            return redirect()->to('/compliance')->with('error', 'You can only manage your own company.');
+        }
+
+        $typeIds = array_map('intval', $this->request->getPost('compliance_type_ids') ?? []);
+        $this->companyTypeModel->setApplicable($companyId, $typeIds);
+        $this->logActivity('compliance', 'update', null, 'Updated applicable compliance types for company #' . $companyId);
+
+        return redirect()->to('/compliance/types/settings?company_id=' . $companyId)->with('success', 'Compliance type settings saved.');
+    }
+
+    /**
+     * Inline "+ Add new type" on the Compliance item form — creates
+     * (or reuses, see ComplianceTypeModel::findOrCreate()) a global type
+     * and immediately marks it applicable to the posted company, then
+     * hands the new option straight back as JSON so the form's JS can
+     * append+select it without a page reload.
+     */
+    public function createType()
+    {
+        $name      = trim((string) $this->request->getPost('name'));
+        $companyId = (int) $this->request->getPost('company_id');
+
+        if ($name === '' || $companyId === 0 || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $companyId)) {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Enter a name and a valid company.']);
+        }
+
+        $type = $this->typeModel->findOrCreate($name);
+
+        // Only touch the junction table if this company has already
+        // opted into an explicit subset — an empty set there means
+        // "every type applies" (see applicableIdsByCompany()'s
+        // docblock), and inserting just this one new type would
+        // wrongly flip that company from "sees everything" to
+        // "restricted to only this new type".
+        $existing = $this->companyTypeModel->applicableIdsFor($companyId);
+        if ($existing !== []) {
+            $this->companyTypeModel->setApplicable($companyId, array_unique([...$existing, (int) $type['id']]));
+        }
+
+        return $this->response->setJSON(['id' => $type['id'], 'name' => $type['name']]);
     }
 
     private function itemPayload(bool $isNew): array

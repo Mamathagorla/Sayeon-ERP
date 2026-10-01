@@ -7,6 +7,7 @@ use App\Modules\Auth\Models\UserModel;
 use App\Modules\Company\Models\CompanyDirectorModel;
 use App\Modules\Company\Models\BankAccountModel;
 use App\Modules\Company\Models\CompanyModel;
+use App\Modules\Company\Models\CountryModel;
 use App\Modules\Compliance\Models\ComplianceItemModel;
 use App\Modules\Document\Models\DocumentModel;
 use App\Modules\HR\Models\EmployeeProfileModel;
@@ -22,6 +23,7 @@ class CompanyController extends BaseController
     protected BankAccountModel $bankAccountModel;
     protected DocumentModel $documentModel;
     protected WebsiteModel $websiteModel;
+    protected CountryModel $countryModel;
 
     public function __construct()
     {
@@ -33,6 +35,7 @@ class CompanyController extends BaseController
         $this->bankAccountModel = new BankAccountModel();
         $this->documentModel  = new DocumentModel();
         $this->websiteModel   = new WebsiteModel();
+        $this->countryModel   = new CountryModel();
     }
 
     /**
@@ -97,16 +100,17 @@ class CompanyController extends BaseController
     public function create()
     {
         return view('App\Modules\Company\form', [
-            'title'     => 'Add Company',
-            'navActive' => 'companies',
-            'company'   => null,
-            'owners'    => $this->userModel->listForOptions(),
+            'title'          => 'Add Company',
+            'navActive'      => 'companies',
+            'company'        => null,
+            'owners'         => $this->userModel->listForOptions(),
+            'countries'      => $this->countryModel->optionsList(),
         ]);
     }
 
     public function store()
     {
-        if (! $this->validate($this->companyModel->getValidationRules(), $this->companyModel->getValidationMessages())) {
+        if (! $this->validate($this->companyModel->validationRulesFor(), $this->companyModel->getValidationMessages())) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
@@ -146,7 +150,12 @@ class CompanyController extends BaseController
             'directors'  => $this->directorModel->forCompany($id),
             'compliance' => $canViewCompliance ? $this->complianceModel->filtered(['company_id' => $id])->findAll() : [],
             'canViewEmployees' => $canViewEmployees,
-            'employees'  => $canViewEmployees ? $this->employeeModel->filtered(['company_id' => $id])->findAll() : [],
+            // EmployeeProfileModel::filtered() orders alphabetically by
+            // name (right for the main Employees list's own search/
+            // browse UX) — this tab specifically wants Employee ID order
+            // instead, so it's re-sorted here rather than changing the
+            // shared model's default for every other caller.
+            'employees'  => $canViewEmployees ? $this->sortByEmployeeCode($this->employeeModel->filtered(['company_id' => $id])->findAll()) : [],
             'canViewBankAccounts' => $canViewBankAccounts,
             'bankAccounts' => $canViewBankAccounts ? $this->bankAccountModel->forCompany($id) : [],
             'canViewDocuments' => $canViewDocuments,
@@ -165,24 +174,34 @@ class CompanyController extends BaseController
         }
 
         return view('App\Modules\Company\form', [
-            'title'     => 'Edit Company',
-            'navActive' => 'companies',
-            'company'   => $company,
-            'owners'    => $this->userModel->listForOptions(),
+            'title'          => 'Edit Company',
+            'navActive'      => 'companies',
+            'company'        => $company,
+            'owners'         => $this->userModel->listForOptions(),
+            'countries'      => $this->countryModel->optionsList(),
         ]);
     }
 
     public function update(int $id)
     {
-        if ($this->companyModel->find($id) === null || $this->outOfScope(['admin'], $id)) {
+        $existing = $this->companyModel->find($id);
+
+        if ($existing === null || $this->outOfScope(['admin'], $id)) {
             return redirect()->to('/companies')->with('error', 'Company not found.');
         }
 
-        if (! $this->validate($this->companyModel->getValidationRules(), $this->companyModel->getValidationMessages())) {
+        if (! $this->validate($this->companyModel->validationRulesFor($id), $this->companyModel->getValidationMessages())) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $this->companyModel->update($id, $this->companyPayload());
+        // skipValidation: already validated above via validationRulesFor($id)
+        // with the real id interpolated — the model's own $validationRules
+        // still carries the plain (non-{id}-resolved) short_code rule and
+        // would otherwise silently re-reject this save through Model::
+        // update()'s automatic validation whenever short_code is left
+        // unchanged (this exact bug already hit this exact column once
+        // before this session).
+        $this->companyModel->skipValidation(true)->update($id, $this->companyPayload());
         $this->logActivity('company', 'update', $id, 'Updated company #' . $id);
 
         return redirect()->to('/companies/' . $id)->with('success', 'Company updated successfully.');
@@ -208,16 +227,42 @@ class CompanyController extends BaseController
 
     private function companyPayload(): array
     {
+        $countryId = $this->request->getPost('country_id') ?: null;
+
         return [
             'name'                => $this->request->getPost('name'),
+            'short_code'          => strtoupper((string) $this->request->getPost('short_code')),
             'status'              => $this->request->getPost('status'),
             'owner_id'            => $this->request->getPost('owner_id') ?: null,
-            'country'             => $this->request->getPost('country'),
+            // Legacy free-text mirror of the selected country, kept in
+            // sync so anything still reading companies.country as a
+            // string (reports, older code) doesn't silently go stale.
+            'country'             => $countryId ? ($this->countryModel->find($countryId)['name'] ?? '') : '',
+            'country_id'          => $countryId,
+            // state_id is deliberately NOT set here — the State field was
+            // removed from the Company form (kept in the schema/existing
+            // data), so this payload must never touch that column: doing
+            // so would silently null out an already-saved state on every
+            // future edit even though nothing on the form ever changed it.
             'cin'                 => $this->request->getPost('cin'),
             'gst'                 => $this->request->getPost('gst'),
             'pan'                 => $this->request->getPost('pan'),
             'registered_address'  => $this->request->getPost('registered_address'),
             'incorporation_date'  => $this->request->getPost('incorporation_date') ?: null,
         ];
+    }
+
+    /**
+     * Employee ID order (SAY001, SAY002, SAY003, ...) rather than the
+     * alphabetical-by-name order EmployeeProfileModel::filtered() itself
+     * returns — natsort()-style comparison so SAY002 sorts before
+     * SAY010 (never an issue at today's 3-digit padding, but correct
+     * regardless if that ever changes).
+     */
+    private function sortByEmployeeCode(array $employees): array
+    {
+        usort($employees, static fn (array $a, array $b) => strnatcmp((string) $a['employee_code'], (string) $b['employee_code']));
+
+        return $employees;
     }
 }

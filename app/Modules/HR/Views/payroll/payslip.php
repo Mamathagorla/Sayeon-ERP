@@ -71,7 +71,10 @@
         <div>
             <h6><span>Deductions</span><span>Amount</span></h6>
             <div class="sy-payslip-line"><span>Deductions</span><span><?= number_format((float) $payslip['deductions'], 2) ?></span></div>
-            <div class="sy-payslip-total"><span>Total Deductions</span><span><?= number_format((float) $payslip['deductions'], 2) ?></span></div>
+            <?php if ((float) ($payslip['lop_days'] ?? 0) > 0): ?>
+            <div class="sy-payslip-line"><span>Loss of Pay (<?= rtrim(rtrim(number_format((float) $payslip['lop_days'], 1), '0'), '.') ?> day<?= (float) $payslip['lop_days'] != 1 ? 's' : '' ?>)</span><span><?= number_format((float) $payslip['lop_amount'], 2) ?></span></div>
+            <?php endif; ?>
+            <div class="sy-payslip-total"><span>Total Deductions</span><span><?= number_format((float) $payslip['deductions'] + (float) ($payslip['lop_amount'] ?? 0), 2) ?></span></div>
         </div>
     </div>
 

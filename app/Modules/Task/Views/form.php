@@ -6,9 +6,14 @@
         <form action="<?= $task ? site_url('tasks/' . $task['id']) : site_url('tasks') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
-                <div class="col-12 mb-3">
+                <div class="col-md-8 mb-3">
                     <label class="form-label">Task Title</label>
                     <input type="text" name="title" class="form-control" value="<?= esc($task['title'] ?? old('title')) ?>" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Task Code <span class="text-muted small">(optional)</span></label>
+                    <input type="text" name="task_code" id="taskCodeInput" class="form-control" value="<?= esc($task['task_code'] ?? old('task_code')) ?>" maxlength="30">
+                    <?php if (! $task): ?><div class="form-text">Suggested once a company is picked — edit freely.</div><?php endif; ?>
                 </div>
                 <div class="col-12 mb-3">
                     <label class="form-label">Description</label>
@@ -131,6 +136,20 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     filterProjects();
     filterAssignees();
+
+    <?php if (! $task): ?>
+    // task_code preview — only on create, and only clobbers the field
+    // while the admin hasn't typed into it themselves.
+    const nextCodeByCompany = <?= json_encode($nextCodeByCompany) ?>;
+    const codeInput = document.getElementById('taskCodeInput');
+    let codeEdited = false;
+    codeInput.addEventListener('input', function () { codeEdited = true; });
+    companySelect.addEventListener('change', function () {
+        if (codeEdited) return;
+        const suggestion = nextCodeByCompany[companySelect.value];
+        codeInput.value = suggestion || '';
+    });
+    <?php endif; ?>
 });
 </script>
 <?= $this->endSection() ?>

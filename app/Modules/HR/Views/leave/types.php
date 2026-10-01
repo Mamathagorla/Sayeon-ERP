@@ -7,12 +7,18 @@
             <div class="card-body">
                 <h6 class="card-title">Leave Types</h6>
                 <table class="table table-sm table-striped">
-                    <thead><tr><th>Name</th><th>Annual Quota</th><th class="text-end">Actions</th></tr></thead>
+                    <thead><tr><th>Name</th><th>Annual Quota</th><th>Type</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
                     <?php foreach ($leaveTypes as $t): ?>
                         <tr>
                             <td><?= esc($t['name']) ?></td>
                             <td><?= esc($t['annual_quota']) ?> days</td>
+                            <td>
+                                <form action="<?= site_url('hr/leave/types/' . $t['id'] . '/toggle-paid') ?>" method="post" class="d-inline">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="btn btn-sm p-0 border-0 badge bg-<?= $t['is_paid'] ? 'success' : 'secondary' ?>" title="Click to toggle"><?= $t['is_paid'] ? 'Paid' : 'Unpaid' ?></button>
+                                </form>
+                            </td>
                             <td class="text-end">
                                 <form action="<?= site_url('hr/leave/types/' . $t['id'] . '/delete') ?>" method="post" class="d-inline" onsubmit="return confirm('Delete this leave type?');">
                                     <?= csrf_field() ?>
@@ -39,6 +45,10 @@
                     <div class="mb-2">
                         <label class="form-label small">Annual Quota (days)</label>
                         <input type="number" step="0.5" min="0" name="annual_quota" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="mb-2 form-check">
+                        <input type="checkbox" name="is_paid" value="1" class="form-check-input" id="leaveTypeIsPaid" checked>
+                        <label class="form-check-label small" for="leaveTypeIsPaid">Paid leave (unchecked counts as Loss-of-Pay in Payroll)</label>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm">Add</button>
                 </form>

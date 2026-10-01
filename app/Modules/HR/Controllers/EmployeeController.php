@@ -156,8 +156,11 @@ class EmployeeController extends BaseController
                     'used'      => $typeUsed,
                     'remaining' => max(0, (float) $type['annual_quota'] - $typeUsed),
                 ];
-                // Unpaid leave has no quota, so it can't count towards a balance.
-                if ((float) $type['annual_quota'] > 0) {
+                // Unpaid leave types (leave_types.is_paid = 0) have no
+                // real quota to run out of — Payroll deducts them as LOP
+                // instead (see PayrollController::generate()) — so they
+                // don't count towards this "remaining balance" total.
+                if ($type['is_paid']) {
                     $quota += (float) $type['annual_quota'];
                     $used  += $typeUsed;
                 }
@@ -172,7 +175,7 @@ class EmployeeController extends BaseController
             $data['leaveRequests'] = $requests;
             $data['upcomingLeave'] = array_slice($upcoming, 0, 4);
 
-            $metrics[] = ['fa-umbrella-beach', 'Leave', $num(max(0, $quota - $used)) . ' days', 'Remaining this year', 'attendance'];
+            $metrics[] = ['fa-umbrella-beach', 'Leave', $num(max(0, $quota - $used)) . ' days', 'Remaining this year', 'leave'];
 
             $pending = (new \App\Modules\HR\Models\LeaveRequestModel())->where('user_id', $userId)->where('status', 'pending')->countAllResults();
             if ($pending > 0) {
@@ -216,6 +219,16 @@ class EmployeeController extends BaseController
                 $gross     = (float) $salary['basic'] + (float) $salary['hra'] + (float) $salary['allowances'];
                 $metrics[] = ['fa-money-check-dollar', 'Salary', number_format($gross * 12), 'Gross · per annum', 'payroll'];
             }
+        }
+
+        // Increment letter history — same viewers who can manage this
+        // profile (employee.edit) can issue/see it; a plain employee
+        // never reaches this page at all (no employee.view), so no
+        // separate self-view branch is needed here the way Onboarding's
+        // self-view required one.
+        if (can('employee.edit')) {
+            $data['showIncrements'] = true;
+            $data['increments']     = (new \App\Modules\HR\Models\EmployeeIncrementLetterModel())->forEmployee($profileId);
         }
 
         // Onboarding / exit records are linked to a profile explicitly
@@ -354,7 +367,16 @@ class EmployeeController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only assign employees to your own company.');
         }
 
-        $this->profileModel->update($id, $this->payload(false));
+        // skipValidation: already validated above with the real id
+        // interpolated directly into the unique rules (line 354-355) —
+        // EmployeeProfileModel's own $validationRules still carries the
+        // unresolved is_unique[...,id,{id}] form (CI4's {id} placeholder
+        // only fills in from a same-named POST field, which a route
+        // param never is), so without this, Model::update()'s automatic
+        // re-validation silently fails and returns false — this exact
+        // bug was confirmed live: editing an employee without changing
+        // employee_code showed a success message but saved nothing.
+        $this->profileModel->skipValidation(true)->update($id, $this->payload(false));
         $this->logActivity('employee', 'update', $id, 'Updated employee profile #' . $id);
 
         return redirect()->to('/hr/employees/' . $id)->with('success', 'Employee profile updated.');
@@ -382,17 +404,30 @@ class EmployeeController extends BaseController
             static fn (array $u) => ! in_array((int) $u['id'], $existingUserIds, true) || ($employee && (int) $u['id'] === (int) $employee['user_id'])
         );
 
+        $companies = $this->scopedCompanyOptions($this->companyModel->optionsList());
+
+        // One preview code per company (each company now has its own
+        // employee_code prefix/sequence — see EmployeeProfileModel::
+        // nextEmployeeCode()) — the create form's JS swaps the visible
+        // suggestion when the admin changes the Company dropdown,
+        // exactly like the Country -> State cascade elsewhere in the app.
+        $nextCodeByCompany = [];
+        foreach ($companies as $c) {
+            $nextCodeByCompany[$c['id']] = $this->profileModel->nextEmployeeCode((int) $c['id']);
+        }
+
         return [
             'title'     => $employee ? 'Edit Employee Profile' : 'Add Employee Profile',
             'navActive' => 'hr-employees',
             'employee'  => $employee,
             'users'     => $availableUsers,
             'allUsers'  => $this->userModel->listForOptions(),
-            'companies' => $this->scopedCompanyOptions($this->companyModel->optionsList()),
+            'companies' => $companies,
             'departments' => $this->departmentModel->optionsList(),
             'employmentTypes' => EmployeeProfileModel::EMPLOYMENT_TYPES,
             'statuses'  => EmployeeProfileModel::STATUSES,
-            'nextCode'  => $employee['employee_code'] ?? $this->profileModel->nextEmployeeCode(),
+            'nextCode'  => $employee['employee_code'] ?? ($nextCodeByCompany[$companies[0]['id'] ?? 0] ?? ''),
+            'nextCodeByCompany' => $nextCodeByCompany,
         ];
     }
 

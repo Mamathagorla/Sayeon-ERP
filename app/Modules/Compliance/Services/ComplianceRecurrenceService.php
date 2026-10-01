@@ -33,13 +33,29 @@ class ComplianceRecurrenceService
             'filed_at' => date('Y-m-d H:i:s'),
         ]);
 
-        if ($item['recurrence'] === 'none') {
+        // Guards against a duplicate next-cycle row if this item already
+        // has a successor — e.g. ComplianceRecurrenceGenerator (or an
+        // earlier call to this same action, since nothing previously
+        // stopped mark-filed being POSTed twice) already spawned one.
+        if ($item['recurrence'] === 'none' || $this->itemModel->hasNextCycle($itemId)) {
             return ['next_item_id' => null];
         }
 
+        return ['next_item_id' => $this->spawnNextCycle($item, $userId)];
+    }
+
+    /**
+     * The actual "create the next cycle" write — the one place both
+     * markFiled() (action-triggered, on the current item) and
+     * ComplianceRecurrenceGenerator (date-triggered, ahead of the due
+     * date) create a next-cycle row, so the field list only has to be
+     * correct in one place.
+     */
+    public function spawnNextCycle(array $item, int $userId): int
+    {
         $nextDueDate = $this->advanceDate($item['due_date'], $item['recurrence']);
 
-        $nextId = $this->itemModel->insert([
+        return $this->itemModel->insert([
             'company_id'           => $item['company_id'],
             'compliance_type_id'   => $item['compliance_type_id'],
             'title'                => $item['title'],
@@ -57,8 +73,6 @@ class ComplianceRecurrenceService
             'previous_item_id'     => $item['id'],
             'created_by'           => $userId,
         ]);
-
-        return ['next_item_id' => $nextId];
     }
 
     private function advanceDate(string $date, string $recurrence): string

@@ -56,7 +56,7 @@ class EmployeeProfileModel extends Model
     public function filtered(array $filters = [])
     {
         $builder = $this->select('employee_profiles.*, users.name as user_name, users.email as user_email, users.phone as user_phone,
-                users.avatar_path as user_avatar,
+                users.avatar_path as user_avatar, users.status as account_status, users.last_login_at as user_last_login_at,
                 companies.name as company_name, departments.name as department_name, manager.name as manager_name')
             ->join('users', 'users.id = employee_profiles.user_id')
             ->join('companies', 'companies.id = employee_profiles.company_id')
@@ -92,15 +92,44 @@ class EmployeeProfileModel extends Model
         return $this->filtered()->where('employee_profiles.user_id', $userId)->first();
     }
 
-    public function nextEmployeeCode(): string
+    /**
+     * Looked up for Attendance's CSV bulk-upload (see
+     * AttendanceController::bulkUpload()) — each row identifies its
+     * employee by their existing, already-unique employee_code rather
+     * than a raw user_id, since that's what HR actually has on hand.
+     */
+    public function byEmployeeCode(string $code): ?array
     {
-        $last = $this->select('employee_code')->orderBy('id', 'DESC')->first();
+        return $this->filtered()->where('employee_profiles.employee_code', $code)->first();
+    }
 
-        $nextNumber = 1;
-        if ($last && preg_match('/(\d+)$/', $last['employee_code'], $m)) {
-            $nextNumber = (int) $m[1] + 1;
+    /**
+     * A suggested next employee_code — company-prefixed and short, e.g.
+     * 'SAY001' for Sayeon's first employee (see companies.short_code,
+     * reinstated by 2026-09-29-165959_ReaddShortCodeToCompanies for
+     * exactly this). Falls back to a plain 'EMP-####' global sequence
+     * only if this company has no short_code set yet — every company
+     * seeded so far does. Purely a preview: derives the number by
+     * scanning what's already saved rather than consuming a counter, so
+     * loading the "Add Employee" form repeatedly never burns or skips
+     * numbers — the field stays an editable text input, guarded by
+     * employee_code's existing table-wide UNIQUE key.
+     */
+    public function nextEmployeeCode(int $companyId): string
+    {
+        $shortCode = company_short_code($companyId);
+
+        if ($shortCode === null || $shortCode === '') {
+            $last = $this->select('employee_code')->orderBy('id', 'DESC')->first();
+
+            $nextNumber = 1;
+            if ($last && preg_match('/(\d+)$/', $last['employee_code'], $m)) {
+                $nextNumber = (int) $m[1] + 1;
+            }
+
+            return 'EMP-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
         }
 
-        return 'EMP-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+        return $shortCode . str_pad((string) next_company_sequence_number('employee_profiles', 'employee_code', $companyId, $shortCode), 3, '0', STR_PAD_LEFT);
     }
 }

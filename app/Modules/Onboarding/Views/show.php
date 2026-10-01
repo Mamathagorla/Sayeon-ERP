@@ -57,11 +57,16 @@ foreach ($trackGroups as $g) {
 ?>
 
 <?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/onboarding') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Onboarding</a>
+<a href="<?= site_url($isOwner ? 'hr/onboarding' : 'dashboard') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i><?= $isOwner ? 'Back to Onboarding' : 'Back' ?></a>
 <?php if ($isOwner): ?>
 <a href="<?= site_url('hr/onboarding/' . $record['id'] . '/edit') ?>" class="btn btn-light btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
+<?php endif; ?>
+<?php if ($isOwner || $isSelf): ?>
 <a href="<?= site_url('hr/onboarding/' . $record['id'] . '/offer-letter') ?>" target="_blank" rel="noopener" class="btn btn-light btn-sm"><i class="fas fa-file-lines me-1"></i>View Offer</a>
 <a href="<?= site_url('hr/onboarding/' . $record['id'] . '/offer-letter?print=1') ?>" target="_blank" rel="noopener" class="btn btn-light btn-sm"><i class="fas fa-print me-1"></i>Print Offer</a>
+<?php if ($record['joined_at']): ?>
+<a href="<?= site_url('hr/onboarding/' . $record['id'] . '/joining-letter') ?>" target="_blank" rel="noopener" class="btn btn-light btn-sm"><i class="fas fa-file-signature me-1"></i>View Joining Letter</a>
+<?php endif; ?>
 <?php endif; ?>
 <div class="dropdown d-inline-block">
     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">More</button>
@@ -385,8 +390,83 @@ foreach ($trackGroups as $g) {
                     <div class="col-md-4 mb-2"><span class="text-muted">Employee Record</span><br><a href="<?= site_url('hr/employees/' . $record['employee_profile_id']) ?>"><?= esc($record['employee_code']) ?></a></div>
                     <?php endif; ?>
                 </div>
+                <?php if ($isOwner && $record['employee_profile_id']): ?>
+                <form action="<?= site_url('hr/onboarding/' . $record['id'] . '/send-link') ?>" method="post" class="mt-2">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fas fa-paper-plane me-1"></i>Send Onboarding Link</button>
+                    <span class="text-muted small ms-1">Delivered in-app (no email/SMTP configured on this instance).</span>
+                </form>
+                <?php endif; ?>
             </div>
         </div>
+
+        <?php if ($isOwner): ?>
+        <div class="sy-card mb-3">
+            <div class="sy-card-header"><strong>Candidate Portal</strong></div>
+            <div class="sy-card-body">
+                <p class="text-muted small mb-2">A secure, token-based link the candidate can use to verify their details and respond to the offer — no ERP login needed.</p>
+
+                <?php if ($portalUrl): ?>
+                <div class="input-group input-group-sm mb-2" style="max-width:520px">
+                    <input type="text" class="form-control" value="<?= esc($portalUrl) ?>" id="portalUrlInput" readonly>
+                    <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('portalUrlInput').value)">Copy</button>
+                </div>
+                <?php else: ?>
+                <p class="small text-muted mb-2">No active link yet.</p>
+                <?php endif; ?>
+
+                <form action="<?= site_url('hr/onboarding/' . $record['id'] . '/send-portal-link') ?>" method="post" class="d-inline">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fas fa-link me-1"></i><?= $portalUrl ? 'Resend / Regenerate Link' : 'Generate & Send Link' ?></button>
+                </form>
+
+                <hr>
+                <div class="small fw-semibold mb-1">Verification Status</div>
+                <?php
+                $verifBadge = [
+                    null => ['secondary', 'Not submitted'], 'pending' => ['secondary', 'Not submitted'],
+                    'submitted' => ['warning', 'Awaiting review'], 'verified' => ['success', 'Verified'],
+                    'correction_needed' => ['danger', 'Correction requested'],
+                ][$record['verification_status']] ?? ['secondary', 'Not submitted'];
+                ?>
+                <span class="badge bg-<?= $verifBadge[0] ?> mb-2"><?= esc($verifBadge[1]) ?></span>
+
+                <?php if ($record['verification_status'] !== 'verified'): ?>
+                    <?php if ($record['verification_status'] === 'submitted'): ?>
+                        <?php if ($record['verification_notes']): ?>
+                        <div class="small text-muted mb-2">Candidate note: "<?= esc($record['verification_notes']) ?>"</div>
+                        <?php endif; ?>
+                        <div class="small text-muted mb-2">Phone on file: <?= esc($record['candidate_phone'] ?? '—') ?></div>
+                    <?php else: ?>
+                        <div class="small text-muted mb-2">The candidate hasn't submitted anything through the portal yet — you can still approve directly (e.g. if verified by phone/in person) to unlock the Offer Letter step for them.</div>
+                    <?php endif; ?>
+                    <form action="<?= site_url('hr/onboarding/' . $record['id'] . '/verification/review') ?>" method="post" class="d-flex gap-2 align-items-start flex-wrap">
+                        <?= csrf_field() ?>
+                        <button type="submit" name="decision" value="verified" class="btn btn-sm btn-success">Mark Verified</button>
+                        <span class="d-inline-flex gap-1">
+                            <input type="text" name="notes" class="form-control form-control-sm" placeholder="Correction note (optional)" style="width:220px">
+                            <button type="submit" name="decision" value="correction_needed" class="btn btn-sm btn-outline-danger">Request Correction</button>
+                        </span>
+                    </form>
+                <?php endif; ?>
+
+                <?php if ($record['offer_sent_at'] && $record['verification_status'] !== 'verified'): ?>
+                <hr>
+                <div class="small text-warning"><i class="fas fa-circle-exclamation me-1"></i>An offer has been sent, but the candidate won't see it in their portal until you mark them Verified above.</div>
+                <?php endif; ?>
+
+                <?php if ($record['offer_response']): ?>
+                <hr>
+                <div class="small fw-semibold mb-1">Offer Response</div>
+                <span class="badge bg-<?= $record['offer_response'] === 'accepted' ? 'success' : 'secondary' ?>"><?= $record['offer_response'] === 'accepted' ? 'Accepted' : 'Declined' ?></span>
+                <span class="text-muted small ms-1">on <?= esc(date('d/m/Y', strtotime($record['offer_response_at']))) ?></span>
+                <?php if ($record['offer_response_note']): ?>
+                <div class="small text-muted mt-1">"<?= esc($record['offer_response_note']) ?>"</div>
+                <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div class="sy-card mb-3">
             <div class="sy-card-header"><strong>Offer Details</strong></div>

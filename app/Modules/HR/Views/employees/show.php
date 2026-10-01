@@ -32,17 +32,24 @@ $hasPerf  = isset($reviews);
 $hasDocs  = isset($documents);
 $hasOnb   = ! empty($showOnboarding) || ! empty($showOffboarding);
 
-// The nav-tabs strip itself is hidden (see .sy-pf-tabs CSS) — these
-// still need a data-bs-toggle="tab" button each so bootstrap's Tab JS
-// can find and activate the pane when a KPI chip, a compact card's
-// "View Details", or the header's "More" menu asks for it via
-// data-pf-tab, even though nobody ever sees the strip itself.
-$tabs = ['overview' => 'Overview', 'personal' => 'Personal Details', 'employment' => 'Employment'];
-if ($hasAtt || $hasLeave) { $tabs['attendance'] = 'Attendance & Leave'; }
+// Personal Information / Employment Details moved out of this tab strip
+// entirely — they're now always-visible cards in the left column (see
+// the SIDE-LEFT section below) instead of tabs someone has to click
+// into. Attendance and Leave used to share one "Attendance & Leave"
+// tab; now split into two so each KPI tile below routes straight to its
+// own tab. "Letters" is new: it holds Increment History (already
+// existed, previously tucked inside the old Employment tab) plus the
+// Onboarding/Exit process tracker, since both are "employee lifecycle
+// documents/records" in spirit and neither had a natural home once
+// Employment stopped being a tab.
+$tabs = [];
+if ($hasAtt) { $tabs['attendance'] = 'Attendance'; }
+if ($hasLeave) { $tabs['leave'] = 'Leave'; }
 if ($hasPay) { $tabs['payroll'] = 'Payroll'; }
 if ($hasPerf) { $tabs['performance'] = 'Performance'; }
 if ($hasDocs) { $tabs['documents'] = 'Documents'; }
-$tabs['activity'] = 'Activity';
+$tabs['letters'] = 'Letters';
+$defaultTab = array_key_first($tabs);
 
 $taskProgress = static function (array $tasks): array {
     $done  = count(array_filter($tasks, static fn (array $t) => in_array($t['status'], ['completed', 'skipped'], true)));
@@ -276,10 +283,7 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
     .sy-pf-va { font-size: .76rem; font-weight: 600; color: var(--sy-accent-ink); text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; }
     .sy-pf-side .sy-card { height: auto; margin-bottom: 12px; }
     .sy-pf-side .sy-card-header strong { font-size: .86rem; }
-    /* The tab strip only exists so bootstrap's Tab JS has something to
-       drive — navigation happens via the KPI row, each compact card's
-       "View Details", and the header's More menu instead. */
-    .sy-pf-tabs { display: none; }
+    .sy-pf-left .sy-card { height: auto; margin-bottom: 12px; }
     @media print {
         .app-sidebar, .app-header, .app-content-header, .sy-pf-side, .sy-pf-tabs, .sy-pf-kpi .go, .sy-pf-noprint, .btn, .dropdown { display: none !important; }
         .tab-content > .tab-pane { display: block !important; opacity: 1 !important; margin-bottom: 16px; }
@@ -289,12 +293,8 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
 
 <div class="sy-pf-crumb"><a href="<?= site_url('hr/employees') ?>"><i class="fas fa-arrow-left me-1"></i>Back to Employees</a></div>
 
-<div class="row g-3">
-<!-- ================= MAIN COLUMN ================= -->
-<div class="col-xl-9">
-
-    <!-- Header card -->
-    <div class="sy-card sy-pf-head" style="height:auto">
+    <!-- Header card (full width, above the 3-column layout below) -->
+    <div class="sy-card sy-pf-head mb-3" style="height:auto">
         <div class="sy-card-body">
             <div class="d-flex flex-wrap gap-3 align-items-start">
                 <?php if (! empty($employee['user_avatar'])): ?>
@@ -326,14 +326,17 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">More</button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><button type="button" class="dropdown-item" data-pf-tab="personal"><i class="fas fa-id-card me-2 text-muted"></i>Personal Details</button></li>
                             <?php if ($hasDocs): ?>
                                 <li><button type="button" class="dropdown-item" data-pf-tab="documents"><i class="fas fa-folder-open me-2 text-muted"></i>Documents</button></li>
                             <?php endif; ?>
                             <?php if ($hasPerf): ?>
                                 <li><button type="button" class="dropdown-item" data-pf-tab="performance"><i class="fas fa-chart-line me-2 text-muted"></i>Performance</button></li>
                             <?php endif; ?>
-                            <li><button type="button" class="dropdown-item" data-pf-tab="activity"><i class="fas fa-clock-rotate-left me-2 text-muted"></i>Activity</button></li>
+                            <li><button type="button" class="dropdown-item" data-pf-tab="letters"><i class="fas fa-file-lines me-2 text-muted"></i>Letters</button></li>
+                            <?php if (! empty($showIncrements)): ?>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="<?= site_url('hr/employees/' . $employee['id'] . '/increment-letters/create') ?>"><i class="fas fa-file-invoice-dollar me-2 text-muted"></i>Issue Increment Letter</a></li>
+                            <?php endif; ?>
                             <li><hr class="dropdown-divider"></li>
                             <li><button type="button" class="dropdown-item" onclick="window.print()"><i class="fas fa-print me-2 text-muted"></i>Print profile</button></li>
                             <?php if (! empty($employee['user_email'])): ?>
@@ -355,9 +358,62 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
         </div>
     </div>
 
+<div class="row g-3">
+<!-- ================= LEFT COLUMN — always-visible snapshot ================= -->
+<div class="col-xl-3 sy-pf-left">
+    <div class="sy-card">
+        <div class="sy-card-header"><strong><i class="fas fa-id-card me-2" style="color:var(--sy-accent-ink)"></i>Personal Information</strong>
+            <?php if (can('employee.edit')): ?><a class="act" href="<?= site_url('hr/employees/' . $employee['id'] . '/edit') ?>">Edit</a><?php endif; ?></div>
+        <div class="sy-card-body">
+            <div class="sy-pf-row"><span class="k">Full Name</span><span class="v"><?= $val($employee['user_name']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Email</span><span class="v"><?= $val($employee['user_email']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Phone</span><span class="v"><?= $val($employee['user_phone']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Date of Birth</span><span class="v"><?= esc($date($employee['date_of_birth'])) ?><?= $age !== null ? ' (' . $age . ' yrs)' : '' ?></span></div>
+            <div class="sy-pf-row"><span class="k">Address</span><span class="v"><?= $val($employee['address']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Emergency Contact</span><span class="v">
+                <?php if (! empty($employee['emergency_contact_name']) || ! empty($employee['emergency_contact_phone'])): ?>
+                    <?= esc($employee['emergency_contact_name'] ?? '') ?><?= ! empty($employee['emergency_contact_phone']) ? ' (' . esc($employee['emergency_contact_phone']) . ')' : '' ?>
+                <?php else: ?>—<?php endif; ?></span></div>
+        </div>
+    </div>
+
+    <div class="sy-card">
+        <div class="sy-card-header"><strong><i class="fas fa-briefcase me-2" style="color:var(--sy-accent-ink)"></i>Employment Details</strong></div>
+        <div class="sy-card-body">
+            <div class="sy-pf-row"><span class="k">Employee ID</span><span class="v"><?= $val($employee['employee_code']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Designation</span><span class="v"><?= $val($employee['designation']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Department</span><span class="v"><?= $val($employee['department_name']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Company</span><span class="v"><?= $val($employee['company_name']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Joining Date</span><span class="v"><?= esc($date($employee['date_of_joining'])) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Tenure</span><span class="v"><?= $val($tenure) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Employment Type</span><span class="v"><?= esc($label($employee['employment_type'])) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Reporting Manager</span><span class="v"><?= $val($employee['manager_name']) ?></span></div>
+            <div class="sy-pf-row"><span class="k">Status</span><span class="v"><span class="badge bg-<?= $statusColor[$employee['status']] ?? 'secondary' ?>"><?= esc($label($employee['status'])) ?></span></span></div>
+            <?php if (! empty($onboarding['probation_end_date'])): ?><div class="sy-pf-row"><span class="k">Probation Ends</span><span class="v"><?= esc($date($onboarding['probation_end_date'])) ?></span></div><?php endif; ?>
+        </div>
+    </div>
+
+    <?php if (! empty($actions)): ?>
+    <div class="sy-card sy-pf-pend">
+        <div class="sy-card-header" style="border-bottom-color:transparent">
+            <strong><i class="fas fa-bell me-2" style="color:var(--sy-accent-ink)"></i>Action Required</strong>
+            <span class="badge bg-danger"><?= count($actions) ?></span>
+        </div>
+        <div class="sy-card-body" style="padding-top:0">
+            <?php foreach ($actions as $i => [$level, $icon, $text]): ?>
+                <div class="item"><span class="num"><?= $i + 1 ?></span><span><?= esc($text) ?></span></div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+</div>
+
+<!-- ================= CENTER COLUMN ================= -->
+<div class="col-xl-6">
+
     <!-- KPI cards -->
     <?php if (! empty($metrics)): ?>
-    <div class="sy-pf-kpis">
+    <div class="sy-pf-kpis" style="margin-top:0">
         <?php foreach ($metrics as [$icon, $mLabel, $mValue, $mSub, $mTab]): ?>
         <button type="button" class="sy-pf-kpi" data-pf-tab="<?= esc($mTab) ?>">
             <span class="ico"><i class="fas <?= $icon ?>"></i></span>
@@ -376,138 +432,49 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
     <ul class="nav nav-tabs sy-pf-tabs" id="pfTabs" role="tablist">
         <?php foreach ($tabs as $key => $tabLabel): ?>
             <li class="nav-item" role="presentation">
-                <button class="nav-link <?= $key === 'overview' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#pf-<?= $key ?>" type="button" role="tab"><?= esc($tabLabel) ?></button>
+                <button class="nav-link <?= $key === $defaultTab ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#pf-<?= $key ?>" type="button" role="tab"><?= esc($tabLabel) ?></button>
             </li>
         <?php endforeach; ?>
     </ul>
 
     <div class="tab-content pt-3">
+        <!-- Overview and Personal Details tabs removed here — that content
+             (Personal Information, Employment Details, Attendance/Leave/
+             Payroll mini-cards, Action Required) now lives permanently in
+             the left column above instead of behind a click. -->
 
-        <!-- ================= OVERVIEW (compact 2x2) ================= -->
-        <div class="tab-pane fade show active" id="pf-overview" role="tabpanel">
-
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <div class="sy-card sy-pf-card">
-                        <div class="sy-card-header"><strong><i class="fas fa-briefcase me-2" style="color:var(--sy-accent-ink)"></i>Employment</strong>
-                            <button type="button" class="act" data-pf-tab="employment">View Details</button></div>
-                        <div class="sy-card-body">
-                            <div class="sy-pf-row"><span class="k">Designation</span><span class="v"><?= $val($employee['designation']) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Department</span><span class="v"><?= $val($employee['department_name']) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Employment Type</span><span class="v"><?= esc($label($employee['employment_type'])) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Joining Date</span><span class="v"><?= esc($date($employee['date_of_joining'])) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Reporting Manager</span><span class="v"><?= $val($employee['manager_name']) ?></span></div>
-                        </div>
-                    </div>
+        <!-- ================= LETTERS ================= -->
+        <div class="tab-pane fade <?= $defaultTab === 'letters' ? 'show active' : '' ?>" id="pf-letters" role="tabpanel">
+            <?php if (! empty($showIncrements)): ?>
+            <div class="sy-card mb-3" style="height:auto">
+                <div class="sy-card-header d-flex justify-content-between align-items-center">
+                    <strong><i class="fas fa-file-invoice-dollar me-2" style="color:var(--sy-accent-ink)"></i>Increment History</strong>
+                    <a href="<?= site_url('hr/employees/' . $employee['id'] . '/increment-letters/create') ?>" class="btn btn-sm btn-outline-secondary sy-pf-noprint"><i class="fas fa-plus me-1"></i>Issue Letter</a>
                 </div>
-
-                <?php if ($hasAtt || $hasLeave): ?>
-                <div class="col-md-6">
-                    <div class="sy-card sy-pf-card">
-                        <div class="sy-card-header"><strong><i class="fas fa-calendar-check me-2" style="color:var(--sy-accent-ink)"></i>Attendance &amp; Leave</strong>
-                            <button type="button" class="act" data-pf-tab="attendance">View Details</button></div>
-                        <div class="sy-card-body">
-                            <div class="sy-pf-fig" style="grid-template-columns:repeat(<?= ($hasAtt && $hasLeave) ? 2 : 1 ?>, 1fr)">
-                                <?php if ($hasAtt): ?>
-                                    <div><div class="k">Attendance</div><div class="v"><?= $attendanceMonth['pct'] !== null ? $attendanceMonth['pct'] . '%' : '—' ?></div><div class="text-muted" style="font-size:.68rem">This month</div></div>
-                                <?php endif; ?>
-                                <?php if ($hasLeave): ?>
-                                    <div><div class="k">Leave Remaining</div><div class="v"><?= esc($num($leaveTotals['remaining'])) ?> <small>days</small></div><div class="text-muted" style="font-size:.68rem">This year</div></div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <?php if ($hasPay || ! empty($actions)): ?>
-            <div class="row g-3 mb-3">
-                <?php if ($hasPay): ?>
-                <div class="<?= empty($actions) ? 'col-12' : 'col-md-6' ?>">
-                    <div class="sy-card sy-pf-card">
-                        <div class="sy-card-header"><strong><i class="fas fa-money-check-dollar me-2" style="color:var(--sy-accent-ink)"></i>Payroll</strong>
-                            <button type="button" class="act" data-pf-tab="payroll">View Details</button></div>
-                        <div class="sy-card-body">
-                            <?php if ($salary === null): ?>
-                                <div class="text-muted small">No salary structure has been set up for this employee yet.</div>
-                            <?php else: ?>
-                                <?php $salaryGrid($salary, $gross, $net); ?>
-                                <?php if (! empty($payslips)): ?>
-                                    <div class="d-flex justify-content-between align-items-center mt-3 small">
-                                        <span class="text-muted">Last Payroll: <strong style="color:var(--sy-ink)"><?= esc($months[$payslips[0]['month']] . ' ' . $payslips[0]['year']) ?></strong></span>
-                                        <span class="badge bg-<?= $payslips[0]['run_status'] === 'paid' ? 'success' : 'info' ?>"><?= esc($label($payslips[0]['run_status'])) ?></span>
-                                    </div>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if (! empty($actions)): ?>
-                <div class="<?= $hasPay ? 'col-md-6' : 'col-12' ?>">
-                    <div class="sy-card sy-pf-card sy-pf-pend">
-                        <div class="sy-card-header" style="border-bottom-color:transparent">
-                            <strong><i class="fas fa-bell me-2" style="color:var(--sy-accent-ink)"></i>Action Required</strong>
-                            <span class="badge bg-danger"><?= count($actions) ?></span>
-                        </div>
-                        <div class="sy-card-body" style="padding-top:0">
-                            <?php foreach ($actions as $i => [$level, $icon, $text]): ?>
-                                <div class="item"><span class="num"><?= $i + 1 ?></span><span><?= esc($text) ?></span></div>
+                <div class="sy-card-body">
+                    <?php if (empty($increments)): ?>
+                        <div class="text-muted small">No increment letters issued yet.</div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Effective</th><th>Previous CTC</th><th>New CTC</th><th>Reason</th><th></th></tr></thead>
+                            <tbody>
+                            <?php foreach ($increments as $inc): ?>
+                                <tr>
+                                    <td><?= esc($date($inc['effective_date'])) ?></td>
+                                    <td><?= $inc['previous_ctc'] !== null ? '₹' . $money($inc['previous_ctc']) : '—' ?></td>
+                                    <td>₹<?= $money($inc['new_ctc']) ?></td>
+                                    <td class="text-muted small"><?= $val($inc['reason']) ?></td>
+                                    <td class="text-end"><a href="<?= site_url('hr/employees/' . $employee['id'] . '/increment-letters/' . $inc['id']) ?>" target="_blank" rel="noopener" class="small">View Letter</a></td>
+                                </tr>
                             <?php endforeach; ?>
+                            </tbody>
+                        </table>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
             </div>
             <?php endif; ?>
-
-        </div>
-
-        <!-- ================= PERSONAL DETAILS (More menu only) ================= -->
-        <div class="tab-pane fade" id="pf-personal" role="tabpanel">
-            <div class="sy-card" style="height:auto">
-                <div class="sy-card-header"><strong><i class="fas fa-id-card me-2" style="color:var(--sy-accent-ink)"></i>Personal Information</strong>
-                    <?php if (can('employee.edit')): ?><a class="act" href="<?= site_url('hr/employees/' . $employee['id'] . '/edit') ?>">Edit</a><?php endif; ?></div>
-                <div class="sy-card-body">
-                    <div class="sy-pf-row"><span class="k">Full Name</span><span class="v"><?= $val($employee['user_name']) ?></span></div>
-                    <div class="sy-pf-row"><span class="k">Date of Birth</span><span class="v"><?= esc($date($employee['date_of_birth'])) ?><?= $age !== null ? ' (' . $age . ' yrs)' : '' ?></span></div>
-                    <div class="sy-pf-row"><span class="k">Email</span><span class="v"><?= $val($employee['user_email']) ?></span></div>
-                    <div class="sy-pf-row"><span class="k">Phone</span><span class="v"><?= $val($employee['user_phone']) ?></span></div>
-                    <div class="sy-pf-row"><span class="k">Address</span><span class="v"><?= $val($employee['address']) ?></span></div>
-                    <div class="sy-pf-row"><span class="k">Emergency Contact</span><span class="v">
-                        <?php if (! empty($employee['emergency_contact_name']) || ! empty($employee['emergency_contact_phone'])): ?>
-                            <?= esc($employee['emergency_contact_name'] ?? '') ?><?= ! empty($employee['emergency_contact_phone']) ? ' (' . esc($employee['emergency_contact_phone']) . ')' : '' ?>
-                        <?php else: ?>—<?php endif; ?></span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= EMPLOYMENT ================= -->
-        <div class="tab-pane fade" id="pf-employment" role="tabpanel">
-            <div class="sy-card mb-3" style="height:auto">
-                <div class="sy-card-header"><strong><i class="fas fa-briefcase me-2" style="color:var(--sy-accent-ink)"></i>Employment Details</strong></div>
-                <div class="sy-card-body">
-                    <div class="row g-0 column-gap-4">
-                        <div class="col-md">
-                            <div class="sy-pf-row"><span class="k">Employee Code</span><span class="v"><?= $val($employee['employee_code']) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Company</span><span class="v"><?= $val($employee['company_name']) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Department</span><span class="v"><?= $val($employee['department_name']) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Designation</span><span class="v"><?= $val($employee['designation']) ?></span></div>
-                        </div>
-                        <div class="col-md">
-                            <div class="sy-pf-row"><span class="k">Employment Type</span><span class="v"><?= esc($label($employee['employment_type'])) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Joining Date</span><span class="v"><?= esc($date($employee['date_of_joining'])) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Tenure</span><span class="v"><?= $val($tenure) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Reporting Manager</span><span class="v"><?= $val($employee['manager_name']) ?></span></div>
-                            <div class="sy-pf-row"><span class="k">Status</span><span class="v"><span class="badge bg-<?= $statusColor[$employee['status']] ?? 'secondary' ?>"><?= esc($label($employee['status'])) ?></span></span></div>
-                            <?php if (! empty($onboarding['probation_end_date'])): ?><div class="sy-pf-row"><span class="k">Probation Ends</span><span class="v"><?= esc($date($onboarding['probation_end_date'])) ?></span></div><?php endif; ?>
-                            <?php if (! empty($onboarding['confirmed_at'])): ?><div class="sy-pf-row"><span class="k">Confirmed On</span><span class="v"><?= esc($date($onboarding['confirmed_at'])) ?></span></div><?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <?php if ($hasOnb): ?>
             <div class="sy-card" style="height:auto">
@@ -528,25 +495,16 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
             <?php endif; ?>
         </div>
 
-        <!-- ================= ATTENDANCE & LEAVE ================= -->
-        <?php if (isset($tabs['attendance'])): ?>
-        <div class="tab-pane fade" id="pf-attendance" role="tabpanel">
-            <div class="row g-3 mb-3">
-                <?php if ($hasAtt): ?>
-                <div class="<?= $hasLeave ? 'col-md-6' : 'col-12' ?>">
-                    <div class="sy-card sy-pf-card"><div class="sy-card-header"><strong>Attendance Summary</strong></div><div class="sy-card-body"><?php $donut($attendanceMonth); ?></div></div>
-                </div>
-                <?php endif; ?>
-                <?php if ($hasLeave): ?>
-                <div class="<?= $hasAtt ? 'col-md-6' : 'col-12' ?>">
-                    <div class="sy-card sy-pf-card"><div class="sy-card-header"><strong>Leave Summary</strong> <span class="text-muted small"><?= esc(date('Y')) ?></span></div><div class="sy-card-body"><?php $leaveSummary($leaveTotals, $leaveBalances); ?></div></div>
-                </div>
-                <?php endif; ?>
+        <!-- ================= ATTENDANCE ================= -->
+        <?php if ($hasAtt): ?>
+        <div class="tab-pane fade <?= $defaultTab === 'attendance' ? 'show active' : '' ?>" id="pf-attendance" role="tabpanel">
+            <div class="sy-card mb-3" style="height:auto">
+                <div class="sy-card-header"><strong>Attendance Overview</strong></div>
+                <div class="sy-card-body"><?php $donut($attendanceMonth); ?></div>
             </div>
 
-            <?php if ($hasAtt): ?>
-            <div class="sy-card mb-3" style="height:auto">
-                <div class="sy-card-header"><strong>Attendance Records</strong> <span class="text-muted small">latest <?= count($attendance) ?></span></div>
+            <div class="sy-card" style="height:auto">
+                <div class="sy-card-header"><strong>Recent Attendance</strong> <span class="text-muted small">latest <?= count($attendance) ?></span></div>
                 <div class="sy-card-body">
                     <?php if (empty($attendance)): ?>
                         <div class="text-muted small">No attendance recorded yet.</div>
@@ -572,9 +530,17 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
                     <?php endif; ?>
                 </div>
             </div>
-            <?php endif; ?>
+        </div>
+        <?php endif; ?>
 
-            <?php if ($hasLeave): ?>
+        <!-- ================= LEAVE ================= -->
+        <?php if ($hasLeave): ?>
+        <div class="tab-pane fade <?= $defaultTab === 'leave' ? 'show active' : '' ?>" id="pf-leave" role="tabpanel">
+            <div class="sy-card mb-3" style="height:auto">
+                <div class="sy-card-header"><strong>Leave Summary</strong> <span class="text-muted small"><?= esc(date('Y')) ?></span></div>
+                <div class="sy-card-body"><?php $leaveSummary($leaveTotals, $leaveBalances); ?></div>
+            </div>
+
             <div class="sy-card" style="height:auto">
                 <div class="sy-card-header"><strong>Leave Requests</strong> <span class="text-muted small">latest <?= count($leaveRequests) ?></span></div>
                 <div class="sy-card-body">
@@ -602,13 +568,12 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
                     <?php endif; ?>
                 </div>
             </div>
-            <?php endif; ?>
         </div>
         <?php endif; ?>
 
         <!-- ================= PAYROLL ================= -->
         <?php if ($hasPay): ?>
-        <div class="tab-pane fade" id="pf-payroll" role="tabpanel">
+        <div class="tab-pane fade <?= $defaultTab === 'payroll' ? 'show active' : '' ?>" id="pf-payroll" role="tabpanel">
             <div class="sy-card mb-3" style="height:auto">
                 <div class="sy-card-header"><strong>Salary Structure</strong>
                     <a href="<?= site_url('hr/payroll/structure/' . $employee['user_id']) ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1"></i><?= $salary ? 'Edit Salary Structure' : 'Set Up Salary Structure' ?></a></div>
@@ -655,7 +620,7 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
 
         <!-- ================= PERFORMANCE ================= -->
         <?php if ($hasPerf): ?>
-        <div class="tab-pane fade" id="pf-performance" role="tabpanel">
+        <div class="tab-pane fade <?= $defaultTab === 'performance' ? 'show active' : '' ?>" id="pf-performance" role="tabpanel">
             <div class="sy-card" style="height:auto">
                 <div class="sy-card-header"><strong>Performance Reviews</strong> <span class="text-muted small">latest <?= count($reviews) ?></span></div>
                 <div class="sy-card-body">
@@ -672,7 +637,7 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
 
         <!-- ================= DOCUMENTS ================= -->
         <?php if ($hasDocs): ?>
-        <div class="tab-pane fade" id="pf-documents" role="tabpanel">
+        <div class="tab-pane fade <?= $defaultTab === 'documents' ? 'show active' : '' ?>" id="pf-documents" role="tabpanel">
             <div class="sy-card" style="height:auto">
                 <div class="sy-card-header"><strong>Documents</strong> <span class="text-muted small"><?= count($documents) ?> on file</span></div>
                 <div class="sy-card-body">
@@ -686,22 +651,14 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
         </div>
         <?php endif; ?>
 
-        <!-- ================= ACTIVITY ================= -->
-        <div class="tab-pane fade" id="pf-activity" role="tabpanel">
-            <div class="sy-card" style="height:auto">
-                <div class="sy-card-header"><strong>Activity</strong> <span class="text-muted small">latest <?= count($activity) ?></span></div>
-                <div class="sy-card-body"><?php $activityList($activity); ?></div>
-            </div>
-        </div>
-
     </div>
 </div>
 
-<!-- ================= SIDEBAR ================= -->
+<!-- ================= RIGHT SIDEBAR ================= -->
 <div class="col-xl-3 sy-pf-side">
     <?php if ($hasLeave): ?>
     <div class="sy-card">
-        <div class="sy-card-header"><strong>Upcoming Leave</strong> <button type="button" class="sy-pf-va" data-pf-tab="attendance">View All</button></div>
+        <div class="sy-card-header"><strong>Upcoming Leave</strong> <button type="button" class="sy-pf-va" data-pf-tab="leave">View All</button></div>
         <div class="sy-card-body">
             <?php if (empty($upcomingLeave)): ?>
                 <div class="small text-muted">No upcoming leave.</div>
@@ -723,8 +680,20 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
             <?php if ($hasPay && ! empty($payslips)): ?>
                 <a class="sy-pf-link" href="<?= site_url('hr/payroll/payslip/' . $payslips[0]['id']) ?>"><span class="ico"><i class="fas fa-file-invoice"></i></span>View Latest Payslip<i class="fas fa-chevron-right go"></i></a>
             <?php endif; ?>
+            <button type="button" class="sy-pf-link" data-pf-tab="letters"><span class="ico"><i class="fas fa-file-lines"></i></span>Generate Letters<i class="fas fa-chevron-right go"></i></button>
+            <?php if (! empty($onboarding)): ?>
+                <a class="sy-pf-link" href="<?= site_url('hr/onboarding/' . $onboarding['id']) ?>"><span class="ico"><i class="fas fa-user-plus"></i></span>Onboarding Information<i class="fas fa-chevron-right go"></i></a>
+            <?php endif; ?>
+            <?php if ($hasPerf): ?>
+                <button type="button" class="sy-pf-link" data-pf-tab="performance"><span class="ico"><i class="fas fa-chart-line"></i></span>Performance Review<i class="fas fa-chevron-right go"></i></button>
+            <?php endif; ?>
             <a class="sy-pf-link" href="<?= site_url('hr/employees') ?>"><span class="ico"><i class="fas fa-users"></i></span>All Employees<i class="fas fa-chevron-right go"></i></a>
         </div>
+    </div>
+
+    <div class="sy-card">
+        <div class="sy-card-header"><strong>Recent Activity</strong> <span class="text-muted small">latest <?= count($activity) ?></span></div>
+        <div class="sy-card-body"><?php $activityList($activity); ?></div>
     </div>
 </div>
 </div>
@@ -741,8 +710,9 @@ $exitLabels  = \App\Modules\Offboarding\Models\OffboardingRecordModel::STAGE_LAB
         el.addEventListener('click', function (e) {
             e.preventDefault();
             showTab(el.getAttribute('data-pf-tab'));
-            // The tab strip itself is hidden (see .sy-pf-tabs), so scroll
-            // to the pane content instead of the old nav-tabs bar.
+            // Scrolls to the tab content itself — useful when the click
+            // came from the sidebar or header "More" menu, both well
+            // below/above the visible tab strip.
             var content = document.querySelector('.tab-content');
             if (content) { content.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
         });

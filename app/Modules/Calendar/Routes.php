@@ -5,4 +5,5 @@
 $routes->group('calendar', ['namespace' => 'App\Modules\Calendar\Controllers'], static function ($routes) {
     $routes->get('/', 'CalendarController::index');
     $routes->get('events', 'CalendarController::events');
+    $routes->get('week-hours', 'CalendarController::weekHours');
 });

@@ -12,6 +12,15 @@ $routes->group('hr', ['namespace' => 'App\Modules\HR\Controllers'], static funct
         $routes->get('(:num)/edit', 'EmployeeController::edit/$1', ['filter' => 'permission:employee.edit']);
         $routes->post('(:num)', 'EmployeeController::update/$1', ['filter' => 'permission:employee.edit']);
         $routes->post('(:num)/delete', 'EmployeeController::delete/$1', ['filter' => 'permission:employee.delete']);
+
+        // Increment letters — 3rd step of the Offer/Joining/Increment
+        // letter workflow, scoped to a specific employee (post-hire, can
+        // recur over their whole tenure). Reuses employee.edit/.view —
+        // same roles that already manage/view this employee's profile.
+        $routes->get('(:num)/increment-letters/create', 'IncrementLetterController::create/$1', ['filter' => 'permission:employee.edit']);
+        $routes->post('(:num)/increment-letters', 'IncrementLetterController::store/$1', ['filter' => 'permission:employee.edit']);
+        $routes->get('(:num)/increment-letters/(:num)', 'IncrementLetterController::show/$1/$2', ['filter' => 'permission:employee.view']);
+        $routes->get('(:num)/increment-letters/(:num)/pdf', 'IncrementLetterController::pdf/$1/$2', ['filter' => 'permission:employee.view']);
     });
 
     // Attendance
@@ -21,6 +30,10 @@ $routes->group('hr', ['namespace' => 'App\Modules\HR\Controllers'], static funct
         $routes->get('employee/(:num)', 'AttendanceController::employee/$1', ['filter' => 'permission:attendance.view']);
         $routes->post('check-in', 'AttendanceController::checkIn', ['filter' => 'permission:attendance.create']);
         $routes->post('check-out', 'AttendanceController::checkOut', ['filter' => 'permission:attendance.create']);
+        $routes->get('mark', 'AttendanceController::markForm', ['filter' => 'permission:attendance.edit']);
+        $routes->post('mark', 'AttendanceController::mark', ['filter' => 'permission:attendance.edit']);
+        $routes->get('bulk-upload', 'AttendanceController::bulkUploadForm', ['filter' => 'permission:attendance.edit']);
+        $routes->post('bulk-upload', 'AttendanceController::bulkUpload', ['filter' => 'permission:attendance.edit']);
     });
 
     // Leave
@@ -35,6 +48,7 @@ $routes->group('hr', ['namespace' => 'App\Modules\HR\Controllers'], static funct
 
         $routes->get('types', 'LeaveTypeController::index', ['filter' => 'permission:leave.edit']);
         $routes->post('types', 'LeaveTypeController::store', ['filter' => 'permission:leave.edit']);
+        $routes->post('types/(:num)/toggle-paid', 'LeaveTypeController::togglePaid/$1', ['filter' => 'permission:leave.edit']);
         $routes->post('types/(:num)/delete', 'LeaveTypeController::delete/$1', ['filter' => 'permission:leave.edit']);
     });
 

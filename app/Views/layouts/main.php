@@ -349,6 +349,11 @@
                             <i class="nav-icon fas fa-handshake"></i><p>Meetings</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="<?= site_url('recurring-meetings') ?>" class="nav-link <?= $nav === 'recurring-meetings' ? 'active' : '' ?>">
+                            <i class="nav-icon fas fa-rotate"></i><p>Recurring Meetings</p>
+                        </a>
+                    </li>
                     <?php endif; ?>
                     <?php if (can('compliance.view')): ?>
                     <li class="nav-item">
@@ -471,6 +476,13 @@
                     <li class="nav-item">
                         <a href="<?= site_url('accounting/bills') ?>" class="nav-link <?= $nav === 'accounting' ? 'active' : '' ?>">
                             <i class="nav-icon fas fa-file-invoice"></i><p>Bills</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    <?php if (can('customer.view')): ?>
+                    <li class="nav-item">
+                        <a href="<?= site_url('customers') ?>" class="nav-link <?= $nav === 'customers' ? 'active' : '' ?>">
+                            <i class="nav-icon fas fa-address-book"></i><p>Customers</p>
                         </a>
                     </li>
                     <?php endif; ?>

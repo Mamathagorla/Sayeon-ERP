@@ -16,10 +16,10 @@
             <tbody>
             <?php foreach ($companies as $c): ?>
                 <tr>
-                    <td><a href="<?= site_url('companies/' . $c['id']) ?>"><?= esc($c['name']) ?></a></td>
+                    <td><a href="<?= site_url('companies/' . $c['id']) ?>"><?= esc($c['name']) ?></a> <?php if (! empty($c['short_code'])): ?><span class="badge bg-light text-dark border"><?= esc($c['short_code']) ?></span><?php endif; ?></td>
                     <td><span class="badge bg-<?= $c['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc($c['status']) ?></span></td>
                     <td><?= esc($c['owner_name'] ?? '—') ?></td>
-                    <td><?= esc($c['country']) ?></td>
+                    <td><?= esc($c['country_name'] ?? $c['country']) ?></td>
                     <td><?= esc($c['gst'] ?? '—') ?></td>
                     <td class="text-end">
                         <a href="<?= site_url('companies/' . $c['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>

@@ -18,6 +18,7 @@
     </div>
     <div class="col-md-3"><strong>Owner:</strong> <?= esc($project['owner_name'] ?? '—') ?></div>
     <div class="col-md-3"><strong>Tasks:</strong> <?= $taskCounts['completed'] ?>/<?= $taskCounts['total'] ?> completed</div>
+    <?php if (! empty($project['project_code'])): ?><div class="col-md-3 mt-2"><strong>Project Code:</strong> <?= esc($project['project_code']) ?></div><?php endif; ?>
 </div>
 
 <?php if (! empty($project['description'])): ?>

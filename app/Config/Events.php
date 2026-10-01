@@ -26,6 +26,8 @@ use CodeIgniter\HotReloader\HotReloader;
 Events::on('post_controller_constructor', static function (): void {
     if (! is_cli()) {
         (new \App\Modules\Expense\Services\RecurringExpenseGenerator())->runOncePerDay();
+        (new \App\Modules\Meeting\Services\RecurringMeetingGenerator())->runOncePerDay();
+        (new \App\Modules\Compliance\Services\ComplianceRecurrenceGenerator())->runOncePerDay();
     }
 });
 

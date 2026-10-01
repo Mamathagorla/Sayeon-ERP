@@ -16,7 +16,7 @@ class TaskModel extends Model
     public const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
     protected $allowedFields = [
-        'uuid', 'title', 'description', 'company_id', 'department_id', 'project_id',
+        'uuid', 'task_code', 'title', 'description', 'company_id', 'department_id', 'project_id',
         'priority', 'assigned_to', 'created_by', 'start_date', 'due_date',
         'status', 'completed_at',
     ];
@@ -42,9 +42,46 @@ class TaskModel extends Model
         'status'        => 'required|in_list[new,assigned,in_progress,waiting,review,completed,on_hold,cancelled]',
         'start_date'    => 'permit_empty|valid_date',
         'due_date'      => 'permit_empty|valid_date',
+        'task_code'     => 'permit_empty|max_length[30]|is_unique[tasks.task_code,id,{id}]',
     ];
 
+    /**
+     * getValidationRules() with task_code's {id} placeholder actually
+     * resolved — CI4's {field} syntax only fills in from a same-named
+     * key in the data being validated (see Validation::fillPlaceholders()),
+     * which a route param never is, so a bare is_unique[...,id,{id}] rule
+     * silently fails to exclude the task's own row on update (confirmed
+     * live via the identical EmployeeProfileModel bug this session).
+     * Interpolating the real id directly avoids the placeholder mechanism
+     * entirely — same fix as CompanyModel::validationRulesFor().
+     */
+    public function validationRulesFor(?int $excludeId = null): array
+    {
+        $rules = $this->validationRules;
+        $rules['task_code'] = 'permit_empty|max_length[30]|is_unique[tasks.task_code,id,' . ($excludeId ?? 0) . ']';
+
+        return $rules;
+    }
+
     protected $beforeInsert = ['assignUuid'];
+
+    /**
+     * A suggested task_code for $companyId — same shape as
+     * ProjectModel::nextProjectCode()/EmployeeProfileModel::
+     * nextEmployeeCode(). Returns null when the company has no
+     * short_code set yet.
+     */
+    public function nextTaskCode(int $companyId): ?string
+    {
+        $shortCode = company_short_code($companyId);
+        if ($shortCode === null || $shortCode === '') {
+            return null;
+        }
+
+        $prefix = $shortCode . '-T';
+
+        return $prefix . str_pad((string) next_company_sequence_number('tasks', 'task_code', $companyId, $prefix), 3, '0', STR_PAD_LEFT);
+    }
 
     protected function assignUuid(array $data): array
     {

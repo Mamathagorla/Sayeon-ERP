@@ -15,8 +15,9 @@ class InvoiceModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'company_id', 'invoice_number', 'customer_name', 'customer_email',
-        'customer_phone', 'customer_gstin', 'customer_address', 'amount',
+        'company_id', 'customer_id', 'invoice_number', 'customer_name', 'customer_email',
+        'customer_phone', 'customer_gstin', 'customer_address',
+        'customer_country_id', 'customer_state_id', 'customer_city', 'amount',
         'gst_type', 'gst_percent', 'discount_percent', 'subtotal',
         'discount_amount', 'cgst_amount', 'sgst_amount', 'igst_amount',
         'issue_date', 'due_date', 'status', 'notes', 'created_by',
@@ -48,11 +49,15 @@ class InvoiceModel extends Model
     // validation rule to check.
     protected $validationRules = [
         'company_id'        => 'required|integer',
+        'customer_id'       => 'permit_empty|integer',
         'invoice_number'    => 'required|regex_match[' . self::NUMBER_PATTERN . ']|max_length[40]|is_unique[invoices.invoice_number,id,{id}]',
         'customer_name'     => 'required|min_length[2]|max_length[150]',
         'customer_email'    => 'permit_empty|valid_email|max_length[150]',
         'customer_phone'    => 'permit_empty|regex_match[/^[0-9+\-\s]{6,20}$/]',
         'customer_gstin'    => 'permit_empty|regex_match[' . self::GSTIN_PATTERN . ']',
+        'customer_country_id' => 'required|integer',
+        'customer_state_id'   => 'permit_empty|integer',
+        'customer_city'       => 'permit_empty|max_length[100]',
         'issue_date'        => 'required|valid_date',
         'due_date'          => 'permit_empty|valid_date',
         'gst_type'          => 'required|in_list[intra_state,inter_state]',
@@ -68,8 +73,10 @@ class InvoiceModel extends Model
 
     public function filtered(array $filters = [])
     {
-        $builder = $this->select('invoices.*, companies.name as company_name')
-            ->join('companies', 'companies.id = invoices.company_id');
+        $builder = $this->select('invoices.*, companies.name as company_name, countries.name as customer_country_name, states.name as customer_state_name')
+            ->join('companies', 'companies.id = invoices.company_id')
+            ->join('countries', 'countries.id = invoices.customer_country_id', 'left')
+            ->join('states', 'states.id = invoices.customer_state_id', 'left');
 
         if (! empty($filters['company_id'])) {
             $builder->where('invoices.company_id', $filters['company_id']);
@@ -173,15 +180,36 @@ class InvoiceModel extends Model
             ->update();
     }
 
-    public function nextInvoiceNumber(): string
+    /**
+     * A suggested invoice_number for $companyId — once the company has a
+     * short_code set, this switches from one shared "INV-{year}-####"
+     * sequence to a short, per-company "{SHORTCODE}-INV###" one (e.g.
+     * 'SAY-INV001'), a continuously incrementing sequence with no yearly
+     * reset. The short_code segment is also what keeps two companies'
+     * invoice numbers from ever colliding under invoice_number's existing
+     * table-wide UNIQUE key, since the number itself restarts per
+     * company. Same read-only preview shape as EmployeeProfileModel::
+     * nextEmployeeCode()/TaskModel::nextTaskCode() — the field stays a
+     * plain editable text input; whatever is actually submitted is what
+     * gets saved and validated.
+     */
+    public function nextInvoiceNumber(?int $companyId = null): string
     {
-        $last = $this->select('invoice_number')->orderBy('id', 'DESC')->first();
+        $shortCode = $companyId !== null ? company_short_code($companyId) : null;
 
-        $nextNumber = 1;
-        if ($last && preg_match('/(\d+)$/', $last['invoice_number'], $m)) {
-            $nextNumber = (int) $m[1] + 1;
+        if ($shortCode === null || $shortCode === '') {
+            $last = $this->select('invoice_number')->orderBy('id', 'DESC')->first();
+
+            $nextNumber = 1;
+            if ($last && preg_match('/(\d+)$/', $last['invoice_number'], $m)) {
+                $nextNumber = (int) $m[1] + 1;
+            }
+
+            return 'INV-' . date('Y') . '-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
         }
 
-        return 'INV-' . date('Y') . '-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+        $prefix = $shortCode . '-INV';
+
+        return $prefix . str_pad((string) next_company_sequence_number('invoices', 'invoice_number', $companyId, $prefix), 3, '0', STR_PAD_LEFT);
     }
 }

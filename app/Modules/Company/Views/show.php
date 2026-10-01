@@ -45,9 +45,10 @@
     .sub-toggle-pills .nav-link.add-action:hover { color: #fff; filter: brightness(1.05); }
 </style>
 <div class="row mb-3">
-    <div class="col-md-3"><strong>Status:</strong> <span class="badge bg-<?= $company['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc($company['status']) ?></span></div>
-    <div class="col-md-3"><strong>Country:</strong> <?= esc($company['country']) ?></div>
-    <div class="col-md-3"><strong>GST:</strong> <?= esc($company['gst'] ?? '—') ?></div>
+    <div class="col-md-2"><strong>Short Code:</strong> <?= esc($company['short_code'] ?? '—') ?></div>
+    <div class="col-md-2"><strong>Status:</strong> <span class="badge bg-<?= $company['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc($company['status']) ?></span></div>
+    <div class="col-md-3"><strong>Country:</strong> <?= esc($company['country_name'] ?? $company['country']) ?><?= $company['state_name'] ? ', ' . esc($company['state_name']) : '' ?></div>
+    <div class="col-md-2"><strong>GST:</strong> <?= esc($company['gst'] ?? '—') ?></div>
     <div class="col-md-3"><strong>PAN:</strong> <?= esc($company['pan'] ?? '—') ?></div>
 </div>
 
@@ -85,8 +86,10 @@
     <div class="tab-pane fade show active" id="tab-overview">
         <div class="co-meta-grid">
             <div class="co-meta-col">
+                <div class="co-meta-row"><span class="k">Short Code</span><span class="v <?= $company['short_code'] ? '' : 'muted' ?>"><?= esc($company['short_code'] ?? '—') ?></span></div>
                 <div class="co-meta-row"><span class="k">Status</span><span class="v"><span class="badge bg-<?= $company['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($company['status'])) ?></span></span></div>
-                <div class="co-meta-row"><span class="k">Country</span><span class="v"><?= esc($company['country']) ?></span></div>
+                <div class="co-meta-row"><span class="k">Country</span><span class="v"><?= esc($company['country_name'] ?? $company['country']) ?></span></div>
+                <div class="co-meta-row"><span class="k">State</span><span class="v <?= $company['state_name'] ? '' : 'muted' ?>"><?= esc($company['state_name'] ?? '—') ?></span></div>
                 <div class="co-meta-row"><span class="k">Owner</span><span class="v <?= $company['owner_name'] ? '' : 'muted' ?>"><?= esc($company['owner_name'] ?? '—') ?></span></div>
                 <div class="co-meta-row"><span class="k">CIN</span><span class="v <?= $company['cin'] ? '' : 'muted' ?>"><?= esc($company['cin'] ?? '—') ?></span></div>
                 <div class="co-meta-row"><span class="k">GST</span><span class="v <?= $company['gst'] ? '' : 'muted' ?>"><?= esc($company['gst'] ?? '—') ?></span></div>

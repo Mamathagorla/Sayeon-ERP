@@ -76,7 +76,10 @@
                 <table class="lines">
                     <tr><th>Deductions</th><th class="amt">Amount</th></tr>
                     <tr><td>Deductions</td><td class="amt"><?= number_format((float) $payslip['deductions'], 2) ?></td></tr>
-                    <tr class="total"><td>Total Deductions</td><td class="amt"><?= number_format((float) $payslip['deductions'], 2) ?></td></tr>
+                    <?php if ((float) ($payslip['lop_days'] ?? 0) > 0): ?>
+                    <tr><td>Loss of Pay (<?= rtrim(rtrim(number_format((float) $payslip['lop_days'], 1), '0'), '.') ?> day<?= (float) $payslip['lop_days'] != 1 ? 's' : '' ?>)</td><td class="amt"><?= number_format((float) $payslip['lop_amount'], 2) ?></td></tr>
+                    <?php endif; ?>
+                    <tr class="total"><td>Total Deductions</td><td class="amt"><?= number_format((float) $payslip['deductions'] + (float) ($payslip['lop_amount'] ?? 0), 2) ?></td></tr>
                 </table>
             </td>
         </tr>

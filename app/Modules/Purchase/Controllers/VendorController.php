@@ -70,7 +70,13 @@ class VendorController extends BaseController
 
     public function edit(int $id)
     {
-        $vendor = $this->vendorModel->find($id);
+        // filtered() (not a plain find()) — form.php shows the vendor's
+        // company name as a disabled field in edit mode, which needs the
+        // company join; find() alone left company_name undefined and
+        // threw (pre-existing bug, unrelated to today's change — fixed
+        // here since it's the exact one-line issue just found and fixed
+        // in the new Customer module's identical edit() method).
+        $vendor = $this->vendorModel->filtered()->where('vendors.id', $id)->first();
 
         if ($vendor === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $vendor['company_id'])) {
             return redirect()->to('/vendors')->with('error', 'Vendor not found.');

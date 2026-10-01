@@ -31,6 +31,7 @@ $routes->post('company-switch', '\App\Modules\Company\Controllers\CompanyControl
  */
 require APPPATH . 'Modules/Auth/Routes.php';
 require APPPATH . 'Modules/Company/Routes.php';
+require APPPATH . 'Modules/Customer/Routes.php';
 require APPPATH . 'Modules/Department/Routes.php';
 require APPPATH . 'Modules/Task/Routes.php';
 require APPPATH . 'Modules/Dashboard/Routes.php';

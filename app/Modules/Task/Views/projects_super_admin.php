@@ -128,7 +128,7 @@ $iconPalette = [
                     $initials = $p['owner_name'] ? mb_strtoupper(mb_substr($p['owner_name'], 0, 1)) : null;
                 ?>
                 <tr>
-                    <td class="text-muted small">#PRJ<?= str_pad((string) $p['id'], 4, '0', STR_PAD_LEFT) ?></td>
+                    <td class="text-muted small"><?= esc($p['project_code'] ?? ('#' . $p['id'])) ?></td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <span class="d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width:32px;height:32px;border-radius:9px;background:<?= $icon['bg'] ?>;color:<?= $icon['color'] ?>">

@@ -156,7 +156,7 @@ class TaskController extends BaseController
             return redirect()->to('/tasks')->with('error', 'Task not found.');
         }
 
-        if (! $this->validate($this->taskModel->getValidationRules())) {
+        if (! $this->validate($this->taskModel->validationRulesFor($id))) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
@@ -176,7 +176,12 @@ class TaskController extends BaseController
 
         $newAssignedTo = $this->request->getPost('assigned_to') ?: null;
 
-        $this->taskModel->update($id, $this->taskPayload(false));
+        // skipValidation: already validated above via validationRulesFor($id)
+        // with the real id interpolated — TaskModel's own $validationRules
+        // still carries the broken {id}-placeholder form and would
+        // otherwise silently re-reject this save through Model::update()'s
+        // automatic validation whenever task_code is left unchanged.
+        $this->taskModel->skipValidation(true)->update($id, $this->taskPayload(false));
         $this->logActivity('task', 'update', $id, 'Updated task #' . $id);
 
         if ((int) $newAssignedTo !== (int) $existing['assigned_to']) {
@@ -427,11 +432,27 @@ class TaskController extends BaseController
 
     private function formData(?array $task): array
     {
+        $companies = $this->scopedCompanyOptions($this->companyModel->optionsList());
+
+        // One preview task_code per company — same nextCodeByCompany/JS
+        // pattern already used for Employees and Invoices. null entries
+        // (a company with no short_code set) are simply skipped by the
+        // view's JS, leaving the field blank exactly as before this
+        // feature existed.
+        $nextCodeByCompany = [];
+        foreach ($companies as $c) {
+            $code = $this->taskModel->nextTaskCode((int) $c['id']);
+            if ($code !== null) {
+                $nextCodeByCompany[$c['id']] = $code;
+            }
+        }
+
         return [
             'title'       => $task ? 'Edit Task' : 'Add Task',
             'navActive'   => 'tasks',
             'task'        => $task,
-            'companies'   => $this->scopedCompanyOptions($this->companyModel->optionsList()),
+            'companies'   => $companies,
+            'nextCodeByCompany' => $nextCodeByCompany,
             'departments' => $this->departmentModel->optionsList(),
             // listForOptionsWithCompany() (not the plain listForOptions()
             // every other module's dropdown uses) so each <option> can
@@ -456,6 +477,7 @@ class TaskController extends BaseController
     {
         $data = [
             'title'         => $this->request->getPost('title'),
+            'task_code'     => $this->request->getPost('task_code') ?: null,
             'description'   => $this->request->getPost('description'),
             'company_id'    => (int) $this->request->getPost('company_id'),
             'department_id' => (int) $this->request->getPost('department_id'),

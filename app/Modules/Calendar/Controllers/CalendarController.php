@@ -5,6 +5,7 @@ namespace App\Modules\Calendar\Controllers;
 use App\Controllers\BaseController;
 use App\Modules\Company\Models\CompanyModel;
 use App\Modules\Compliance\Models\ComplianceItemModel;
+use App\Modules\HR\Models\AttendanceModel;
 use App\Modules\Meeting\Models\MeetingModel;
 use App\Modules\Task\Models\TaskModel;
 
@@ -22,6 +23,7 @@ class CalendarController extends BaseController
     protected MeetingModel $meetingModel;
     protected ComplianceItemModel $complianceModel;
     protected CompanyModel $companyModel;
+    protected AttendanceModel $attendanceModel;
 
     public function __construct()
     {
@@ -29,6 +31,7 @@ class CalendarController extends BaseController
         $this->meetingModel    = new MeetingModel();
         $this->complianceModel = new ComplianceItemModel();
         $this->companyModel    = new CompanyModel();
+        $this->attendanceModel = new AttendanceModel();
     }
 
     public function index()
@@ -41,6 +44,42 @@ class CalendarController extends BaseController
             'canViewTasks'      => can('task.view'),
             'canViewMeetings'   => can('meeting.view'),
             'canViewCompliance' => can('compliance.view'),
+            'canViewWeekHours'  => can('attendance.view'),
+        ]);
+    }
+
+    /**
+     * JSON weekly work-hours view for the current user — "how many
+     * hours did I work this week, and on which days" — reusing the same
+     * check_in/check_out data and hours math the Attendance History page
+     * already shows per-row, just rolled up into a Mon-Sun week. Always
+     * scoped to the logged-in user (this is "my week", same as the
+     * Dashboard's own personal widgets), never another employee's.
+     */
+    public function weekHours()
+    {
+        if (! can('attendance.view')) {
+            return $this->response->setJSON(['days' => [], 'totalMinutes' => 0]);
+        }
+
+        $userId = (int) session('userId');
+        $anchor = $this->request->getGet('week') ?: date('Y-m-d');
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $anchor)) {
+            $anchor = date('Y-m-d');
+        }
+
+        // ISO week starts Monday — walk back to it from whatever date
+        // the caller anchors on ('N' = 1 for Monday .. 7 for Sunday).
+        $monday = date('Y-m-d', strtotime($anchor . ' -' . (date('N', strtotime($anchor)) - 1) . ' days'));
+
+        $days  = $this->attendanceModel->weekSummary($userId, $monday);
+        $total = array_sum(array_column($days, 'minutes'));
+
+        return $this->response->setJSON([
+            'weekStart'    => $monday,
+            'weekEnd'      => date('Y-m-d', strtotime($monday . ' +6 days')),
+            'days'         => $days,
+            'totalMinutes' => $total,
         ]);
     }
 
@@ -71,6 +110,18 @@ class CalendarController extends BaseController
             if ($companyId !== null && $companyId !== '') {
                 $filters['company_id'] = $companyId;
             }
+            // "Show only important/relevant events" — a completed or
+            // cancelled task's due-date marker isn't useful on a
+            // forward-looking calendar once it's done; reuses the same
+            // status filter the Tasks list page already has, just with
+            // every status except those two.
+            $filters['status'] = array_values(array_diff(TaskModel::STATUSES, ['completed', 'cancelled']));
+            // Further narrowed to high/urgent priority only — confirmed
+            // with the user that even after excluding completed/
+            // cancelled, ordinary low/medium-priority tasks still read
+            // as clutter on a calendar meant to surface what actually
+            // matters this week.
+            $filters['priority'] = ['high', 'urgent'];
 
             foreach ($this->taskModel->filtered($filters)->findAll() as $task) {
                 if (! $task['due_date']) {
@@ -120,6 +171,10 @@ class CalendarController extends BaseController
                 'company_id'          => $companyId,
                 'responsible_user_id' => $isPersonalScope ? $userId : null,
             ]);
+            // Same "important events only" rule as Tasks above — a 'filed'
+            // compliance item is already resolved, so its due-date marker
+            // stops being useful on a forward-looking calendar.
+            $filters['status'] = array_values(array_diff(ComplianceItemModel::STATUSES, ['filed']));
 
             foreach ($this->complianceModel->filtered($filters)->findAll() as $item) {
                 $overdue = $item['status'] === 'overdue';

@@ -10,13 +10,18 @@
                     <label class="form-label">Project Name</label>
                     <input type="text" name="name" class="form-control" value="<?= esc($project['name'] ?? old('name')) ?>" required>
                 </div>
-                <div class="col-12 mb-3">
+                <div class="col-md-8 mb-3">
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-control" rows="3"><?= esc($project['description'] ?? '') ?></textarea>
                 </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Project Code <span class="text-muted small">(optional)</span></label>
+                    <input type="text" name="project_code" id="projectCodeInput" class="form-control" value="<?= esc($project['project_code'] ?? old('project_code')) ?>" maxlength="30">
+                    <?php if (! $project): ?><div class="form-text">Suggested once a company is picked.</div><?php endif; ?>
+                </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Company</label>
-                    <select name="company_id" class="form-select" required>
+                    <select name="company_id" id="projectCompanySelect" class="form-select" required>
                         <option value="">Select company</option>
                         <?php foreach ($companies as $c): ?>
                             <option value="<?= $c['id'] ?>" <?= (($project['company_id'] ?? null) == $c['id']) ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
@@ -55,3 +60,22 @@
     </div>
 </div>
 <?= $this->endSection() ?>
+
+<?php if (! $project): ?>
+<?= $this->section('scripts') ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const nextCodeByCompany = <?= json_encode($nextCodeByCompany) ?>;
+    const companySelect = document.getElementById('projectCompanySelect');
+    const codeInput = document.getElementById('projectCodeInput');
+    let codeEdited = false;
+    codeInput.addEventListener('input', function () { codeEdited = true; });
+    companySelect.addEventListener('change', function () {
+        if (codeEdited) return;
+        const suggestion = nextCodeByCompany[companySelect.value];
+        codeInput.value = suggestion || '';
+    });
+});
+</script>
+<?= $this->endSection() ?>
+<?php endif; ?>

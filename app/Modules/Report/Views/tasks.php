@@ -73,10 +73,11 @@
             <p class="text-muted mb-0">No tasks match these filters.</p>
         <?php else: ?>
         <table class="table table-striped table-sm">
-            <thead><tr><th>Title</th><th>Company</th><th>Department</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Due Date</th></tr></thead>
+            <thead><tr><th>Task ID</th><th>Title</th><th>Company</th><th>Department</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Due Date</th></tr></thead>
             <tbody>
             <?php foreach ($tasks as $t): ?>
                 <tr class="<?= ($t['due_date'] && $t['due_date'] < date('Y-m-d') && ! in_array($t['status'], ['completed', 'cancelled'], true)) ? 'table-danger' : '' ?>">
+                    <td class="text-muted small"><?= esc($t['task_code'] ?? '—') ?></td>
                     <td><a href="<?= site_url('tasks/' . $t['id']) ?>"><?= esc($t['title']) ?></a></td>
                     <td><?= esc($t['company_name']) ?></td>
                     <td><?= esc($t['department_name']) ?></td>

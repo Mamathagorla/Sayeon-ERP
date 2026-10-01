@@ -120,7 +120,7 @@ class ProjectController extends BaseController
             return redirect()->to('/projects')->with('error', 'Project not found.');
         }
 
-        if (! $this->validate($this->projectModel->getValidationRules())) {
+        if (! $this->validate($this->projectModel->validationRulesFor($id))) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
@@ -128,7 +128,11 @@ class ProjectController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only assign projects to your own company.');
         }
 
-        $this->projectModel->update($id, $this->payload());
+        // skipValidation: already validated above via validationRulesFor($id)
+        // with the real id interpolated — see TaskController::update()'s
+        // identical comment for why this matters (confirmed live on the
+        // analogous EmployeeProfileModel bug this session).
+        $this->projectModel->skipValidation(true)->update($id, $this->payload());
         $this->logActivity('project', 'update', $id, 'Updated project #' . $id);
 
         return redirect()->to('/projects')->with('success', 'Project updated.');
@@ -154,11 +158,22 @@ class ProjectController extends BaseController
 
     private function formData(?array $project): array
     {
+        $companies = $this->scopedCompanyOptions($this->companyModel->optionsList());
+
+        $nextCodeByCompany = [];
+        foreach ($companies as $c) {
+            $code = $this->projectModel->nextProjectCode((int) $c['id']);
+            if ($code !== null) {
+                $nextCodeByCompany[$c['id']] = $code;
+            }
+        }
+
         return [
             'title'     => $project ? 'Edit Project' : 'Add Project',
             'navActive' => 'projects',
             'project'   => $project,
-            'companies' => $this->scopedCompanyOptions($this->companyModel->optionsList()),
+            'companies' => $companies,
+            'nextCodeByCompany' => $nextCodeByCompany,
             'users'     => $this->scopedUserOptions($this->userModel->listForOptions()),
             'statuses'  => ProjectModel::STATUSES,
         ];
@@ -168,6 +183,7 @@ class ProjectController extends BaseController
     {
         return [
             'company_id'  => (int) $this->request->getPost('company_id'),
+            'project_code' => $this->request->getPost('project_code') ?: null,
             'name'        => $this->request->getPost('name'),
             'description' => $this->request->getPost('description'),
             'status'      => $this->request->getPost('status') ?: 'active',

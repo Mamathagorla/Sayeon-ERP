@@ -16,7 +16,7 @@
             <p class="text-muted mb-0">No payslips in this run.</p>
         <?php else: ?>
         <table class="table table-sm table-striped">
-            <thead><tr><th>Employee</th><th class="text-end">Basic</th><th class="text-end">HRA</th><th class="text-end">Allowances</th><th class="text-end">Deductions</th><th class="text-end">Gross</th><th class="text-end">Net</th><th></th></tr></thead>
+            <thead><tr><th>Employee</th><th class="text-end">Basic</th><th class="text-end">HRA</th><th class="text-end">Allowances</th><th class="text-end">Deductions</th><th class="text-end">LOP</th><th class="text-end">Gross</th><th class="text-end">Net</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($payslips as $p): ?>
                 <tr>
@@ -25,6 +25,7 @@
                     <td class="text-end"><?= number_format($p['hra'], 2) ?></td>
                     <td class="text-end"><?= number_format($p['allowances'], 2) ?></td>
                     <td class="text-end"><?= number_format($p['deductions'], 2) ?></td>
+                    <td class="text-end"><?= (float) ($p['lop_days'] ?? 0) > 0 ? number_format($p['lop_amount'], 2) . ' (' . rtrim(rtrim(number_format($p['lop_days'], 1), '0'), '.') . 'd)' : '—' ?></td>
                     <td class="text-end"><?= number_format($p['gross'], 2) ?></td>
                     <td class="text-end fw-semibold"><?= number_format($p['net'], 2) ?></td>
                     <td><a href="<?= site_url('hr/payroll/payslip/' . $p['id']) ?>" class="btn btn-sm btn-outline-secondary">View</a></td>

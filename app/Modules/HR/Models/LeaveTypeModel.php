@@ -9,7 +9,7 @@ class LeaveTypeModel extends Model
     protected $table         = 'leave_types';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
-    protected $allowedFields = ['name', 'annual_quota'];
+    protected $allowedFields = ['name', 'annual_quota', 'is_paid'];
     protected $useTimestamps = false;
 
     protected $validationRules = [

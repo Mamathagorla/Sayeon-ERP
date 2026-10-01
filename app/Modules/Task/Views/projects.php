@@ -53,6 +53,7 @@
                 <tr>
                     <td>
                         <a href="<?= site_url('projects/' . $p['id']) ?>"><?= esc($p['name']) ?></a>
+                        <?php if (! empty($p['project_code'])): ?><span class="badge bg-light text-dark border ms-1"><?= esc($p['project_code']) ?></span><?php endif; ?>
                         <?php if (! empty($p['description'])): ?>
                             <div class="text-muted small"><?= esc($p['description']) ?></div>
                         <?php endif; ?>

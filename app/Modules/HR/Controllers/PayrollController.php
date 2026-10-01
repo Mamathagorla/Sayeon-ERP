@@ -3,7 +3,9 @@
 namespace App\Modules\HR\Controllers;
 
 use App\Controllers\BaseController;
+use App\Modules\HR\Models\AttendanceModel;
 use App\Modules\HR\Models\EmployeeProfileModel;
+use App\Modules\HR\Models\LeaveRequestModel;
 use App\Modules\HR\Models\PayrollRunModel;
 use App\Modules\HR\Models\PayslipModel;
 use App\Modules\HR\Models\SalaryStructureModel;
@@ -17,6 +19,8 @@ class PayrollController extends BaseController
     protected PayslipModel $payslipModel;
     protected SalaryStructureModel $structureModel;
     protected EmployeeProfileModel $employeeModel;
+    protected AttendanceModel $attendanceModel;
+    protected LeaveRequestModel $leaveRequestModel;
     protected NotificationService $notificationService;
 
     public function __construct()
@@ -25,6 +29,8 @@ class PayrollController extends BaseController
         $this->payslipModel   = new PayslipModel();
         $this->structureModel = new SalaryStructureModel();
         $this->employeeModel  = new EmployeeProfileModel();
+        $this->attendanceModel = new AttendanceModel();
+        $this->leaveRequestModel = new LeaveRequestModel();
         $this->notificationService = new NotificationService();
     }
 
@@ -114,6 +120,7 @@ class PayrollController extends BaseController
             'allowances' => $sum('allowances'),
             'gross'      => $sum('gross'),
             'deductions' => $sum('deductions'),
+            'lop_amount' => $sum('lop_amount'),
             'net'        => $sum('net'),
         ];
     }
@@ -156,9 +163,23 @@ class PayrollController extends BaseController
             'created_by' => $this->currentUserId(),
         ]);
 
+        // Attendance/Leave -> Payroll integration: Loss-of-Pay days are
+        // this month's unapproved absences (attendance.status='absent')
+        // plus approved leave on an unpaid leave type (leave_types.
+        // is_paid = 0 — see AddIsPaidToLeaveTypes). Approved leave on a
+        // paid type, holidays and week-offs never count — only these two
+        // sources do, matching how "LOP" is normally defined.
+        $daysInMonth = (int) date('t', mktime(0, 0, 0, $month, 1, $year));
+
         foreach ($payable as $s) {
             $gross = (float) $s['basic'] + (float) $s['hra'] + (float) $s['allowances'];
-            $net   = $gross - (float) $s['deductions'];
+
+            $absentDays = (float) ($this->attendanceModel->monthSummary((int) $s['user_id'], $month, $year)['absent'] ?? 0);
+            $unpaidLeaveDays = $this->leaveRequestModel->unpaidDaysInMonth((int) $s['user_id'], $month, $year);
+            $lopDays = $absentDays + $unpaidLeaveDays;
+            $lopAmount = $daysInMonth > 0 ? round(($gross / $daysInMonth) * $lopDays, 2) : 0.0;
+
+            $net = $gross - (float) $s['deductions'] - $lopAmount;
 
             $this->payslipModel->insert([
                 'payroll_run_id' => $runId,
@@ -167,6 +188,8 @@ class PayrollController extends BaseController
                 'hra'            => $s['hra'],
                 'allowances'     => $s['allowances'],
                 'deductions'     => $s['deductions'],
+                'lop_days'       => $lopDays,
+                'lop_amount'     => $lopAmount,
                 'gross'          => $gross,
                 'net'            => $net,
             ]);

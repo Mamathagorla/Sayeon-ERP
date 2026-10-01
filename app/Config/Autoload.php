@@ -21,6 +21,7 @@ class Autoload extends AutoloadConfig
 
         'App\\Modules\\Auth'       => APPPATH . 'Modules/Auth',
         'App\\Modules\\Company'    => APPPATH . 'Modules/Company',
+        'App\\Modules\\Customer'   => APPPATH . 'Modules/Customer',
         'App\\Modules\\Department' => APPPATH . 'Modules/Department',
         'App\\Modules\\Task'       => APPPATH . 'Modules/Task',
         'App\\Modules\\Dashboard'  => APPPATH . 'Modules/Dashboard',
@@ -47,5 +48,5 @@ class Autoload extends AutoloadConfig
 
     public $files = [];
 
-    public array $helpers = ['url', 'form', 'text', 'array', 'permission', 'payroll'];
+    public array $helpers = ['url', 'form', 'text', 'array', 'permission', 'payroll', 'gst', 'company_code'];
 }

@@ -47,11 +47,16 @@ class ParticipantController extends BaseController
         }
 
         if ($userId && (int) $userId !== (int) $this->currentUserId()) {
+            $message = 'You were added to "' . $meeting['title'] . '" on ' . $meeting['meeting_date'] . '.';
+            if (! empty($meeting['meeting_link'])) {
+                $message .= ' Join at: ' . $meeting['meeting_link'];
+            }
+
             $this->notificationService->notify(
                 (int) $userId,
                 'meeting_invite',
                 'Meeting invite: ' . $meeting['title'],
-                'You were added to "' . $meeting['title'] . '" on ' . $meeting['meeting_date'] . '.',
+                $message,
                 'meeting',
                 $meetingId
             );

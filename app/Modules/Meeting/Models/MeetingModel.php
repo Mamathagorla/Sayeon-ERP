@@ -6,6 +6,8 @@ use CodeIgniter\Model;
 
 class MeetingModel extends Model
 {
+    public const PROVIDERS = ['none', 'google_meet', 'zoom'];
+
     protected $table            = 'meetings';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
@@ -13,7 +15,8 @@ class MeetingModel extends Model
 
     protected $allowedFields = [
         'company_id', 'title', 'agenda', 'meeting_date', 'start_time',
-        'end_time', 'location', 'mom', 'created_by',
+        'end_time', 'location', 'meeting_link', 'join_token', 'recurring_meeting_id',
+        'occurrence_number', 'mom', 'created_by', 'provider', 'provider_meeting_id',
     ];
 
     protected $useTimestamps = true;
@@ -24,7 +27,37 @@ class MeetingModel extends Model
         'title'        => 'required|min_length[2]|max_length[200]',
         'company_id'   => 'required|integer',
         'meeting_date' => 'required|valid_date',
+        'provider'     => 'permit_empty|in_list[none,google_meet,zoom]',
     ];
+
+    protected $beforeInsert = ['assignJoinToken'];
+
+    /**
+     * The unique, unguessable token behind every meeting's join link —
+     * always system-generated, never accepted from a form (join_token is
+     * in $allowedFields only so bulkAdd-style internal updates can touch
+     * it if ever needed; every real insert path goes through here, not a
+     * caller-supplied value). See joinUrl()/2026-09-29-160001_
+     * AddJoinTokenToMeetings for why this exists.
+     */
+    protected function assignJoinToken(array $data): array
+    {
+        if (empty($data['data']['join_token'])) {
+            $data['data']['join_token'] = bin2hex(random_bytes(20));
+        }
+
+        return $data;
+    }
+
+    /**
+     * The link every participant is actually sent — includes the token,
+     * so it can't be guessed by walking meeting ids, and is what
+     * MeetingController::join() checks against before granting access.
+     */
+    public function joinUrl(array $meeting): string
+    {
+        return site_url('meetings/' . $meeting['id'] . '/join/' . $meeting['join_token']);
+    }
 
     /**
      * List with company name, filterable by company/date-range —

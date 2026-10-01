@@ -58,6 +58,8 @@
                         <div class="inv-meta-row"><span class="k">Customer GSTIN</span><span class="v <?= $invoice['customer_gstin'] ? '' : 'muted' ?>"><?= esc($invoice['customer_gstin'] ?? '—') ?></span></div>
                         <div class="inv-meta-row"><span class="k">Contact</span><span class="v <?= ($invoice['customer_email'] || $invoice['customer_phone']) ? '' : 'muted' ?>"><?= esc(trim(($invoice['customer_email'] ?? '') . ($invoice['customer_phone'] ? ' · ' . $invoice['customer_phone'] : '')) ?: '—') ?></span></div>
                         <div class="inv-meta-row"><span class="k">Billing Address</span><span class="v <?= $invoice['customer_address'] ? '' : 'muted' ?>"><?= $invoice['customer_address'] ? nl2br(esc($invoice['customer_address'])) : '—' ?></span></div>
+                        <?php $customerLocation = implode(', ', array_filter([$invoice['customer_city'] ?? null, $invoice['customer_state_name'] ?? null, $invoice['customer_country_name'] ?? null])); ?>
+                        <div class="inv-meta-row"><span class="k">City / State / Country</span><span class="v <?= $customerLocation ? '' : 'muted' ?>"><?= esc($customerLocation ?: '—') ?></span></div>
                     </div>
                 </div>
             </div>

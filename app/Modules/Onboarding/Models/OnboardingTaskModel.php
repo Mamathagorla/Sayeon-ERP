@@ -158,7 +158,7 @@ class OnboardingTaskModel extends Model
     {
         $phaseModel = new OnboardingPhaseModel();
 
-        $rows = array_map(static function (array $t) use ($phaseModel) {
+        $rows = array_map(static function (array $t) use ($phaseModel, $onboardingRecordId) {
             return [
                 'onboarding_record_id' => $onboardingRecordId,
                 'task_type'            => $t['type'],

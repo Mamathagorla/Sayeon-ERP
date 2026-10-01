@@ -119,7 +119,7 @@ $exportRows = array_map(static fn (array $r) => [
         <?php else: ?>
         <div class="table-responsive">
         <table class="table table-hover mb-0">
-            <thead><tr><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th></tr></thead>
+            <thead><tr><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th><th>Decided By</th></tr></thead>
             <tbody>
             <?php foreach ($records as $r): ?>
                 <tr class="sy-lv-row"
@@ -137,6 +137,7 @@ $exportRows = array_map(static fn (array $r) => [
                     <td><?= esc($num($r['days'])) ?></td>
                     <td class="text-muted small"><?= esc(mb_strimwidth($r['reason'] ?? '—', 0, 40, '…')) ?></td>
                     <td><span class="badge bg-<?= $statusBadge[$r['status']] ?? 'secondary' ?>"><?= esc(ucfirst($r['status'])) ?></span></td>
+                    <td class="text-muted small"><?= $r['approver_name'] ? esc($r['approver_name']) : '—' ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

@@ -35,6 +35,9 @@ class RolePermissionSeeder extends Seeder
                 // manages their own company's receivables too, not just
                 // payables (bill.*) and expenses.
                 'invoice.view', 'invoice.create', 'invoice.edit', 'invoice.delete',
+                // Customers are the receivables-side counterpart to
+                // invoices — same roles that manage invoices manage them.
+                'customer.view', 'customer.create', 'customer.edit', 'customer.delete',
                 // Their own company's bank accounts, documents, and
                 // compliance items — not in the original field list,
                 // added because the disabled/read-only tabs on the
@@ -118,6 +121,7 @@ class RolePermissionSeeder extends Seeder
             ],
             'accountant'          => [
                 'invoice.view', 'invoice.create', 'invoice.edit', 'invoice.delete',
+                'customer.view', 'customer.create', 'customer.edit', 'customer.delete',
                 'bill.view', 'bill.create', 'bill.edit', 'bill.delete',
                 'expense.view', 'expense.create', 'expense.edit', 'expense.delete',
                 'report.view',
@@ -186,6 +190,12 @@ class RolePermissionSeeder extends Seeder
                 // Purchase Orders — can submit their own purchase
                 // requests; no approve/edit/delete.
                 'purchase_order.view', 'purchase_order.create',
+                // Self-view only — OnboardingController::index()/show()
+                // additionally restrict a plain 'employee' viewer to just
+                // their own linked record (see isSelfRecord()), so this
+                // slug alone never exposes the company's full candidate
+                // pipeline to them.
+                'onboarding.view',
             ],
         ];
 

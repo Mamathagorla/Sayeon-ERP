@@ -17,7 +17,7 @@ class PermissionSeeder extends Seeder
         $modules = [
             'user', 'role', 'company', 'department', 'project', 'task', 'meeting', 'compliance', 'report',
             'employee', 'attendance', 'leave', 'payroll', 'performance', 'onboarding', 'offboarding',
-            'expense', 'bank_account', 'invoice', 'bill',
+            'expense', 'bank_account', 'invoice', 'bill', 'customer',
             'website', 'document', 'campaign', 'policy', 'purchase_order', 'support_ticket',
         ];
         $actions = ['view', 'create', 'edit', 'delete'];

@@ -142,6 +142,8 @@
             <h3>Bill To</h3>
             <div class="name"><?= esc($invoice['customer_name']) ?></div>
             <?php if (! empty($invoice['customer_address'])): ?><div class="line"><?= nl2br(esc($invoice['customer_address'])) ?></div><?php endif; ?>
+            <?php $customerLocation = implode(', ', array_filter([$invoice['customer_city'] ?? null, $invoice['customer_state_name'] ?? null, $invoice['customer_country_name'] ?? null])); ?>
+            <?php if ($customerLocation !== ''): ?><div class="line"><?= esc($customerLocation) ?></div><?php endif; ?>
             <?php if (! empty($invoice['customer_email']) || ! empty($invoice['customer_phone'])): ?>
             <div class="line"><?= esc(trim(($invoice['customer_email'] ?? '') . ($invoice['customer_phone'] ? ' · ' . $invoice['customer_phone'] : ''))) ?></div>
             <?php endif; ?>

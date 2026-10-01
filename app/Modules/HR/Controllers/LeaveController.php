@@ -4,6 +4,7 @@ namespace App\Modules\HR\Controllers;
 
 use App\Controllers\BaseController;
 use App\Modules\Auth\Models\UserModel;
+use App\Modules\Department\Models\DepartmentModel;
 use App\Modules\HR\Models\EmployeeProfileModel;
 use App\Modules\HR\Models\LeaveRequestModel;
 use App\Modules\HR\Models\LeaveTypeModel;
@@ -36,6 +37,7 @@ class LeaveController extends BaseController
     protected LeaveTypeModel $leaveTypeModel;
     protected EmployeeProfileModel $employeeModel;
     protected UserModel $userModel;
+    protected DepartmentModel $departmentModel;
     protected NotificationService $notificationService;
 
     public function __construct()
@@ -44,6 +46,7 @@ class LeaveController extends BaseController
         $this->leaveTypeModel  = new LeaveTypeModel();
         $this->employeeModel   = new EmployeeProfileModel();
         $this->userModel       = new UserModel();
+        $this->departmentModel = new DepartmentModel();
         $this->notificationService = new NotificationService();
     }
 
@@ -55,7 +58,7 @@ class LeaveController extends BaseController
      */
     public function index()
     {
-        $filters = array_filter($this->request->getGet(['status', 'leave_type_id']) ?? []);
+        $filters = array_filter($this->request->getGet(['status', 'leave_type_id', 'department_id', 'q']) ?? []);
 
         // Super Admin doesn't apply for leave — nothing to show as "own" requests.
         $isSuperAdmin = session('roleSlug') === 'super_admin';
@@ -75,13 +78,27 @@ class LeaveController extends BaseController
             $teamRequests = $this->leaveModel->filtered($teamFilters)->findAll();
         }
 
+        // A single combined, newest-first list for the KPI row and main
+        // table — "my own" and "team" never overlap (approvableRoleSlugs()
+        // only ever returns ranks strictly below the viewer's own), so a
+        // plain concat is safe, no dedupe needed.
+        $requests = array_merge($myRequests, $teamRequests);
+        usort($requests, static fn (array $a, array $b) => strcmp($b['created_at'], $a['created_at']));
+
+        $statusCounts = array_fill_keys(LeaveRequestModel::STATUSES, 0);
+        foreach ($requests as $r) {
+            $statusCounts[$r['status']] = ($statusCounts[$r['status']] ?? 0) + 1;
+        }
+
         return view('App\Modules\HR\leave/index', [
-            'title'        => 'Leave Requests',
+            'title'        => 'Leave',
             'navActive'    => 'hr-leave',
             'canApprove'   => $canApprove,
-            'myRequests'   => $myRequests,
-            'teamRequests' => $teamRequests,
+            'isSuperAdmin' => $isSuperAdmin,
+            'requests'     => $requests,
+            'statusCounts' => $statusCounts,
             'leaveTypes'   => $this->leaveTypeModel->optionsList(),
+            'departments'  => $this->departmentModel->optionsList(),
             'balances'     => $isSuperAdmin ? [] : $this->balancesFor((int) session('userId')),
             'filters'      => $filters,
         ]);
@@ -215,17 +232,33 @@ class LeaveController extends BaseController
                 return redirect()->to('/hr/leave')->with('error', 'You cannot approve or reject your own leave request.');
             }
         } else {
-            $requesterRoleSlug = $this->userModel->findActiveById((int) $request['user_id'])['role_slug'] ?? null;
-            $myRank        = self::ROLE_RANK[$myRoleSlug] ?? null;
-            $requesterRank = self::ROLE_RANK[$requesterRoleSlug] ?? null;
+            // A designated approver (employee_profiles.reporting_manager_id,
+            // set on the Edit Employee form) may decide this specific
+            // request outright — this is the actual "define the leave
+            // approval members" mechanism: an admin names who approves
+            // whom, rather than it always being purely rank-based. Falls
+            // through to the rank/company-scope check below for every
+            // requester who doesn't have a reporting manager assigned yet
+            // (still true for the great majority of existing employees),
+            // so nothing that worked before stops working.
+            $requesterProfile = $this->employeeModel->byUserId((int) $request['user_id']);
+            $isDesignatedApprover = $requesterProfile !== null
+                && $requesterProfile['reporting_manager_id'] !== null
+                && (int) $requesterProfile['reporting_manager_id'] === (int) $this->currentUserId();
 
-            if ($myRank === null || $requesterRank === null || $myRank >= $requesterRank) {
-                return redirect()->to('/hr/leave')->with('error', 'You are not authorized to approve this leave request.');
+            if (! $isDesignatedApprover) {
+                $requesterRoleSlug = $this->userModel->findActiveById((int) $request['user_id'])['role_slug'] ?? null;
+                $myRank        = self::ROLE_RANK[$myRoleSlug] ?? null;
+                $requesterRank = self::ROLE_RANK[$requesterRoleSlug] ?? null;
+
+                if ($myRank === null || $requesterRank === null || $myRank >= $requesterRank) {
+                    return redirect()->to('/hr/leave')->with('error', 'You are not authorized to approve this leave request.');
+                }
             }
 
             $companyScope = $this->companyScopeFor(['admin', 'manager', 'hr']);
             if ($companyScope !== null) {
-                $requesterCompanyId = $this->employeeModel->byUserId((int) $request['user_id'])['company_id'] ?? null;
+                $requesterCompanyId = $requesterProfile['company_id'] ?? null;
 
                 if ((int) $requesterCompanyId !== $companyScope) {
                     return redirect()->to('/hr/leave')->with('error', 'You can only approve or reject leave requests from your own company.');

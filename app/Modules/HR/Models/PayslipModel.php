@@ -9,7 +9,7 @@ class PayslipModel extends Model
     protected $table         = 'payslips';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
-    protected $allowedFields = ['payroll_run_id', 'user_id', 'basic', 'hra', 'allowances', 'deductions', 'gross', 'net'];
+    protected $allowedFields = ['payroll_run_id', 'user_id', 'basic', 'hra', 'allowances', 'deductions', 'lop_days', 'lop_amount', 'gross', 'net'];
     protected $useTimestamps = false;
 
     protected $beforeInsert = ['stampCreatedAt'];

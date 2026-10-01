@@ -48,6 +48,41 @@ class ComplianceItemModel extends Model
             ->update();
     }
 
+    /**
+     * Every recurring item that's within its own reminder_days_before
+     * lead time (or already past due) and doesn't have a next cycle yet
+     * — what ComplianceRecurrenceGenerator processes. Deliberately not
+     * conditioned on the item's own status: today the next cycle only
+     * ever appears once someone clicks "Mark Filed" (see
+     * ComplianceRecurrenceService::markFiled()), so an item nobody files
+     * on time never gets a successor and the chain silently stops. This
+     * decouples "next cycle exists" from the filing action, using each
+     * item's own reminder_days_before instead of a hardcoded lead time.
+     */
+    public function dueForGeneration(?int $companyId = null): array
+    {
+        $builder = $this->where('recurrence !=', 'none')
+            ->where('due_date <= DATE_ADD(CURDATE(), INTERVAL reminder_days_before DAY)')
+            ->where('id NOT IN (SELECT DISTINCT previous_item_id FROM compliance_items WHERE previous_item_id IS NOT NULL)');
+
+        if ($companyId !== null) {
+            $builder->where('company_id', $companyId);
+        }
+
+        return $builder->findAll();
+    }
+
+    /**
+     * True if $itemId already has a next-cycle row spawned from it —
+     * the idempotency guard both markFiled() and the automatic generator
+     * share, so an item can never end up with two successors regardless
+     * of which path (or both) reaches it.
+     */
+    public function hasNextCycle(int $itemId): bool
+    {
+        return $this->where('previous_item_id', $itemId)->countAllResults() > 0;
+    }
+
     public function filtered(array $filters = [])
     {
         $builder = $this->select('compliance_items.*, companies.name as company_name,

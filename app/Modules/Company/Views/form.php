@@ -10,16 +10,28 @@
                     <label class="form-label">Company Name</label>
                     <input type="text" name="name" class="form-control" value="<?= esc($company['name'] ?? old('name')) ?>" required>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Short Code</label>
+                    <input type="text" name="short_code" class="form-control" value="<?= esc($company['short_code'] ?? old('short_code')) ?>" maxlength="6" style="text-transform:uppercase" pattern="[A-Za-z0-9]*" title="Letters and numbers only" required>
+                </div>
+                <div class="col-md-2 mb-3">
                     <label class="form-label">Status</label>
                     <select name="status" class="form-select" required>
                         <option value="active" <?= (($company['status'] ?? 'active') === 'active') ? 'selected' : '' ?>>Active</option>
                         <option value="inactive" <?= (($company['status'] ?? '') === 'inactive') ? 'selected' : '' ?>>Inactive</option>
                     </select>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-2 mb-3">
                     <label class="form-label">Country</label>
-                    <input type="text" name="country" class="form-control" value="<?= esc($company['country'] ?? old('country')) ?>" required>
+                    <select name="country_id" class="form-select" required>
+                        <option value="">Select country</option>
+                        <?php foreach ($countries as $c): ?>
+                            <option value="<?= $c['id'] ?>" <?= (($company['country_id'] ?? old('country_id')) == $c['id']) ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 mb-2">
+                    <div class="form-text mt-0">Short Code prefixes every ID this company gets: employees (SAY001), projects (SAY-P001), tasks (SAY-T001), invoices (SAY-INV001).</div>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Owner</label>

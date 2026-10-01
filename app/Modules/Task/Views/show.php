@@ -21,6 +21,7 @@
 </div>
 <div class="row mb-3">
     <div class="col-md-3"><strong>Due:</strong> <?= $task['due_date'] ? esc(date('d/m/Y', strtotime($task['due_date']))) : '—' ?></div>
+    <?php if (! empty($task['task_code'])): ?><div class="col-md-3"><strong>Task Code:</strong> <?= esc($task['task_code']) ?></div><?php endif; ?>
 </div>
 
 <div class="card mb-3">
