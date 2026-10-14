@@ -3,7 +3,10 @@
 namespace App\Modules\Auth\Controllers;
 
 use App\Controllers\BaseController;
+use App\Modules\Auth\Models\AppSettingModel;
 use App\Modules\Auth\Models\UserModel;
+use App\Modules\Auth\Services\LocalizationService;
+use DateTimeZone;
 
 class AuthController extends BaseController
 {
@@ -155,7 +158,13 @@ class AuthController extends BaseController
     {
         $user = $this->userModel->find(session()->get('userId'));
 
-        return view('App\Modules\Auth\profile', ['user' => $user]);
+        return view('App\Modules\Auth\profile', [
+            'user'        => $user,
+            'timezones'   => DateTimeZone::listIdentifiers(),
+            'locales'     => AppSettingModel::LOCALES,
+            'orgTimezone' => LocalizationService::instance()->orgTimezone(),
+            'orgLocale'   => LocalizationService::instance()->org()['locale'],
+        ]);
     }
 
     public function updateProfile()
@@ -175,10 +184,21 @@ class AuthController extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
+        // A blank timezone/locale means "use the organization default", stored as NULL.
+        $timezone = $this->request->getPost('timezone') ?: null;
+        $locale   = $this->request->getPost('locale') ?: null;
+
+        if (($timezone !== null && ! AppSettingModel::isTimezone($timezone)) || ($locale !== null && ! array_key_exists($locale, AppSettingModel::LOCALES))) {
+            return redirect()->back()->withInput()->with('error', 'Choose a timezone and locale from the list, or leave them blank for the organization default.');
+        }
+
         $data = [
-            'name'  => $this->request->getPost('name'),
-            'phone' => $this->request->getPost('phone'),
+            'name'     => $this->request->getPost('name'),
+            'phone'    => $this->request->getPost('phone'),
+            'timezone' => $timezone,
+            'locale'   => $locale,
         ];
+        LocalizationService::reset();
 
         $avatar = $this->request->getFile('avatar');
 

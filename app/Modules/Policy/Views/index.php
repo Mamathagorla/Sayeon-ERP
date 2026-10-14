@@ -57,7 +57,7 @@
                     <td class="text-muted small"><?= esc($p['company_name']) ?></td>
                     <td class="text-muted small"><?= esc($p['owner_name'] ?? '—') ?></td>
                     <td><?= esc($p['version'] ?: '—') ?></td>
-                    <td class="text-muted small"><?= $p['last_review_date'] ? esc(date('d/m/Y', strtotime($p['last_review_date']))) : '—' ?></td>
+                    <td class="text-muted small"><?= $p['last_review_date'] ? esc(erp_date($p['last_review_date'])) : '—' ?></td>
                     <td class="text-muted small"><?= $p['retention_years'] !== null ? esc($p['retention_years']) . ' Year' . ($p['retention_years'] == 1 ? '' : 's') : '—' ?></td>
                     <td><span class="badge bg-<?= ['draft' => 'info', 'published' => 'success', 'archived' => 'secondary'][$p['status']] ?>"><?= esc(ucfirst($p['status'])) ?></span></td>
                 </tr>

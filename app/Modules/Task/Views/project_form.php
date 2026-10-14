@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-7">
     <div class="card-body">
-        <form action="<?= $project ? site_url('projects/' . $project['id']) : site_url('projects') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Project Details" action="<?= $project ? site_url('projects/' . $project['id']) : site_url('projects') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-12 mb-3">
@@ -28,6 +28,7 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Status &amp; Timeline"></div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Status</label>
                     <select name="status" class="form-select" required>
@@ -38,10 +39,10 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Owner</label>
-                    <select name="owner_id" class="form-select">
+                    <select name="owner_id" id="projectOwnerSelect" class="form-select">
                         <option value="">Unassigned</option>
                         <?php foreach ($users as $u): ?>
-                            <option value="<?= $u['id'] ?>" <?= (($project['owner_id'] ?? null) == $u['id']) ? 'selected' : '' ?>><?= esc($u['name']) ?></option>
+                            <option value="<?= $u['id'] ?>" data-company-id="<?= esc($u['company_id'] ?? '', 'attr') ?>" <?= (($project['owner_id'] ?? null) == $u['id']) ? 'selected' : '' ?>><?= esc($u['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -61,12 +62,13 @@
 </div>
 <?= $this->endSection() ?>
 
-<?php if (! $project): ?>
 <?= $this->section('scripts') ?>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const nextCodeByCompany = <?= json_encode($nextCodeByCompany) ?>;
     const companySelect = document.getElementById('projectCompanySelect');
+
+    <?php if (! $project): ?>
+    const nextCodeByCompany = <?= json_encode($nextCodeByCompany) ?>;
     const codeInput = document.getElementById('projectCodeInput');
     let codeEdited = false;
     codeInput.addEventListener('input', function () { codeEdited = true; });
@@ -75,7 +77,33 @@ document.addEventListener('DOMContentLoaded', function () {
         const suggestion = nextCodeByCompany[companySelect.value];
         codeInput.value = suggestion || '';
     });
+    <?php endif; ?>
+
+    // Owner narrows to the selected Company — same pattern as the Task
+    // form's Project/Assigned To filtering (see its own comment for why
+    // this is getElementById, not a name= selector: the topbar's own
+    // company switcher is also a <select name="company_id">).
+    const ownerSelect = document.getElementById('projectOwnerSelect');
+    if (ownerSelect) {
+        const ownerOptions = Array.from(ownerSelect.options).filter(function (o) { return o.value !== ''; });
+
+        function filterOwners() {
+            const companyId = companySelect.value;
+            const currentValue = ownerSelect.value;
+            let stillValid = false;
+
+            ownerOptions.forEach(function (option) {
+                const matches = ! companyId || option.dataset.companyId === companyId;
+                option.hidden = ! matches;
+                if (matches && option.value === currentValue) stillValid = true;
+            });
+
+            if (! stillValid) ownerSelect.value = '';
+        }
+
+        companySelect.addEventListener('change', filterOwners);
+        filterOwners();
+    }
 });
 </script>
 <?= $this->endSection() ?>
-<?php endif; ?>

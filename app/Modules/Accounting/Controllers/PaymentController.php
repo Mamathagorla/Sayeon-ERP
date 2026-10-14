@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Modules\Accounting\Models\BillModel;
 use App\Modules\Accounting\Models\InvoiceModel;
 use App\Modules\Accounting\Models\PaymentModel;
+use App\Modules\Purchase\Models\PurchaseOrderModel;
 
 class PaymentController extends BaseController
 {
@@ -30,6 +31,15 @@ class PaymentController extends BaseController
 
         if (! $this->validate($this->paymentModel->getValidationRules())) {
             return redirect()->back()->with('errors', $this->validator->getErrors());
+        }
+
+        if ($invoice['status'] === 'cancelled') {
+            return redirect()->back()->with('error', 'Payments cannot be recorded against a cancelled invoice.');
+        }
+
+        $balance = round((float) $invoice['amount'] - $this->paymentModel->totalForInvoice($invoiceId), 2);
+        if (round((float) $this->request->getPost('amount'), 2) > $balance) {
+            return redirect()->back()->with('error', 'The payment exceeds the outstanding balance of ' . number_format(max(0, $balance), 2) . '.');
         }
 
         $this->paymentModel->insert([
@@ -62,6 +72,15 @@ class PaymentController extends BaseController
             return redirect()->back()->with('errors', $this->validator->getErrors());
         }
 
+        if ($bill['status'] === 'cancelled') {
+            return redirect()->back()->with('error', 'Payments cannot be recorded against a cancelled bill.');
+        }
+
+        $balance = round((float) $bill['amount'] - $this->paymentModel->totalForBill($billId), 2);
+        if (round((float) $this->request->getPost('amount'), 2) > $balance) {
+            return redirect()->back()->with('error', 'The payment exceeds the outstanding balance of ' . number_format(max(0, $balance), 2) . '.');
+        }
+
         $this->paymentModel->insert([
             'company_id'   => $bill['company_id'],
             'bill_id'      => $billId,
@@ -75,6 +94,7 @@ class PaymentController extends BaseController
         ]);
 
         $this->refreshBillStatus($billId, (float) $bill['amount']);
+        (new PurchaseOrderModel())->syncPaymentStatus(($bill['purchase_order_id'] ?? null) ? (int) $bill['purchase_order_id'] : null);
         $this->logActivity('accounting', 'update', $billId, 'Recorded payment against bill #' . $billId);
 
         return redirect()->to('/accounting/bills/' . $billId)->with('success', 'Payment recorded.');
@@ -86,6 +106,11 @@ class PaymentController extends BaseController
 
         if ($payment === null) {
             return redirect()->back()->with('error', 'Payment not found.');
+        }
+
+        // Payments booked by Payroll or by an expense-claim reimbursement belong to that module, not to an invoice/bill.
+        if (empty($payment['invoice_id']) && empty($payment['bill_id'])) {
+            return redirect()->back()->with('error', 'This payment was booked by Payroll or an expense claim and cannot be deleted here.');
         }
 
         // Route-level filter can't express "invoice.edit or bill.edit
@@ -110,6 +135,7 @@ class PaymentController extends BaseController
 
         $bill = $this->billModel->find($payment['bill_id']);
         $this->refreshBillStatus($payment['bill_id'], (float) $bill['amount']);
+        (new PurchaseOrderModel())->syncPaymentStatus(($bill['purchase_order_id'] ?? null) ? (int) $bill['purchase_order_id'] : null);
 
         return redirect()->to('/accounting/bills/' . $payment['bill_id'])->with('success', 'Payment removed.');
     }

@@ -25,10 +25,12 @@ class GoogleOAuthController extends BaseController
 {
     private const AUTH_URL  = 'https://accounts.google.com/o/oauth2/v2/auth';
     private const TOKEN_URL = 'https://oauth2.googleapis.com/token';
-    private const SCOPE     = 'https://www.googleapis.com/auth/calendar.events';
+    private const SCOPE     = GoogleOAuthConnectionModel::CALENDAR_SCOPE;
 
     protected GoogleOAuthConnectionModel $connectionModel;
     protected MeetingProviders $config;
+    /** Replaced in tests so no request reaches Google. */
+    public ?object $httpClient = null;
 
     public function __construct()
     {
@@ -96,8 +98,10 @@ class GoogleOAuthController extends BaseController
         }
 
         try {
-            $tokenClient = \Config\Services::curlrequest(['http_errors' => false]);
+            $tokenClient = $this->httpClient ?? \Config\Services::curlrequest(['http_errors' => false]);
             $tokenResponse = $tokenClient->post(self::TOKEN_URL, [
+                'connect_timeout' => 5,
+                'timeout'         => 15,
                 'form_params' => [
                     'code'          => $code,
                     'client_id'     => $this->config->googleOAuthClientId,
@@ -113,19 +117,38 @@ class GoogleOAuthController extends BaseController
                 throw new \RuntimeException($tokenData['error_description'] ?? 'Token exchange failed.');
             }
 
-            // access_type=offline only returns refresh_token on the
-            // FIRST-ever consent for a given client+account pairing
-            // unless prompt=consent forces it every time (see connect())
-            // — still guarded here in case Google ever omits it, so a
-            // reconnect doesn't silently wipe a working refresh_token
-            // with null.
+            // Google's consent screen lets the user untick individual
+            // permissions, so signing in successfully does not mean Calendar
+            // access was granted. Nothing is stored in that case: a token
+            // without the scope would only fail again at event creation.
+            // The scope that counts is the one Google reports, never an
+            // assumption that we got what we asked for.
+            $grantedScope = (string) ($tokenData['scope'] ?? '');
+            if (! GoogleOAuthConnectionModel::grantsCalendar($grantedScope)) {
+                $this->connectionModel->markReconnectRequired((int) $this->currentUserId());
+
+                return redirect()->to('/meetings/create')->with('error', 'Google did not grant calendar access. Click "Connect Google Account" again and tick the permission to view and edit events on your calendars (it is not ticked by default on some accounts), then press Continue.');
+            }
+
             $googleEmail = $this->fetchGoogleEmail($tokenClient, $tokenData['access_token']);
+            $existing    = $this->connectionModel->forUser((int) $this->currentUserId());
+
+            // Google only returns a refresh token when it shows the consent
+            // screen (connect() forces that). Without one there is nothing to
+            // renew the access token with — unless this is the same Google
+            // account already connected, whose stored refresh token is kept.
+            $sameAccount = $existing !== null && ! empty($existing['refresh_token'])
+                && $googleEmail !== null && strcasecmp((string) $existing['google_email'], $googleEmail) === 0;
+
+            if (empty($tokenData['refresh_token']) && ! $sameAccount) {
+                return redirect()->to('/meetings/create')->with('error', 'Google did not return a long-lived connection for this account. Remove this app under your Google account third-party access settings, then connect again.');
+            }
 
             $data = [
                 'google_email'     => $googleEmail,
                 'access_token'     => $tokenData['access_token'],
                 'token_expires_at' => date('Y-m-d H:i:s', time() + (int) ($tokenData['expires_in'] ?? 3600)),
-                'scope'            => $tokenData['scope'] ?? self::SCOPE,
+                'scope'            => $grantedScope,
             ];
 
             if (! empty($tokenData['refresh_token'])) {
@@ -153,6 +176,8 @@ class GoogleOAuthController extends BaseController
     {
         try {
             $response = $client->get('https://www.googleapis.com/oauth2/v2/userinfo', [
+                'connect_timeout' => 5,
+                'timeout'         => 10,
                 'headers' => ['Authorization' => 'Bearer ' . $accessToken],
             ]);
             $data = json_decode((string) $response->getBody(), true) ?? [];

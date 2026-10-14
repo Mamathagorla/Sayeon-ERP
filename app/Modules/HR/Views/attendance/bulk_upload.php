@@ -1,9 +1,5 @@
 <?= $this->extend('layouts/main') ?>
 
-<?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/attendance') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Attendance</a>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 <div class="card col-lg-7">
     <div class="card-body">

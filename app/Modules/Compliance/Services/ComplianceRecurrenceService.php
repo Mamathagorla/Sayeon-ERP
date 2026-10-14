@@ -28,10 +28,13 @@ class ComplianceRecurrenceService
             throw new \RuntimeException('Compliance item not found.');
         }
 
-        $this->itemModel->update($itemId, [
-            'status'   => 'filed',
-            'filed_at' => date('Y-m-d H:i:s'),
-        ]);
+        // The first filing time is the record; filing an already-filed item again must not overwrite it.
+        if ($item['status'] !== 'filed') {
+            $this->itemModel->update($itemId, [
+                'status'   => 'filed',
+                'filed_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
 
         // Guards against a duplicate next-cycle row if this item already
         // has a successor — e.g. ComplianceRecurrenceGenerator (or an

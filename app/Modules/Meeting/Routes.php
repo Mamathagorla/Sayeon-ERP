@@ -17,7 +17,6 @@ $routes->group('meetings', ['namespace' => 'App\Modules\Meeting\Controllers'], s
     $routes->get('google/connect', 'GoogleOAuthController::connect', ['filter' => 'permission:meeting.create']);
     $routes->get('google/callback', 'GoogleOAuthController::callback', ['filter' => 'permission:meeting.create']);
     $routes->post('google/disconnect', 'GoogleOAuthController::disconnect', ['filter' => 'permission:meeting.create']);
-
     $routes->get('(:num)', 'MeetingController::show/$1', ['filter' => 'permission:meeting.view']);
     // The auto-generated join link — permission:meeting.view is only the
     // first gate (must be logged in with basic meeting access at all);

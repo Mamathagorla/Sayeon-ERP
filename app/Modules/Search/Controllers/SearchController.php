@@ -47,7 +47,7 @@ class SearchController extends BaseController
                 ->select('employee_profiles.id, users.name as user_name, employee_profiles.employee_code, companies.name as company_name')
                 ->join('users', 'users.id = employee_profiles.user_id')
                 ->join('companies', 'companies.id = employee_profiles.company_id')
-                ->groupStart()->like('users.name', $term)->orLike('employee_profiles.employee_code', $term)->groupEnd();
+                ->groupStart()->like('users.name', $term)->orLike('users.email', $term)->orLike('employee_profiles.employee_code', $term)->groupEnd();
             if ($companyScope !== null) {
                 $builder->where('employee_profiles.company_id', $companyScope);
             }

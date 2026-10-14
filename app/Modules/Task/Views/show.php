@@ -2,7 +2,6 @@
 
 <?= $this->section('pageActions') ?>
 <a href="<?= site_url('tasks/' . $task['id'] . '/edit') ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
-<a href="<?= site_url('tasks') ?>" class="btn btn-light btn-sm">Back to list</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -20,7 +19,7 @@
     <div class="col-md-3"><strong>Assigned To:</strong> <?= esc($task['assignee_name'] ?? '—') ?></div>
 </div>
 <div class="row mb-3">
-    <div class="col-md-3"><strong>Due:</strong> <?= $task['due_date'] ? esc(date('d/m/Y', strtotime($task['due_date']))) : '—' ?></div>
+    <div class="col-md-3"><strong>Due:</strong> <?= $task['due_date'] ? esc(erp_date($task['due_date'])) : '—' ?></div>
     <?php if (! empty($task['task_code'])): ?><div class="col-md-3"><strong>Task Code:</strong> <?= esc($task['task_code']) ?></div><?php endif; ?>
 </div>
 
@@ -82,7 +81,7 @@
         <?php foreach ($comments as $c): ?>
             <div class="mb-2 border-bottom pb-2">
                 <strong><?= esc($c['user_name']) ?></strong>
-                <span class="text-muted small ms-2"><?= esc(date('d/m/Y, g:i A', strtotime($c['created_at']))) ?></span>
+                <span class="text-muted small ms-2"><?= esc(erp_date($c['created_at']) . ", " . erp_time($c['created_at'])) ?></span>
                 <p class="mb-0"><?= nl2br(esc($c['comment'])) ?></p>
             </div>
         <?php endforeach; ?>
@@ -100,7 +99,7 @@
                     <a href="<?= site_url('files/download?path=' . urlencode($a['file_path'])) ?>" target="_blank">
                         <i class="fas fa-paperclip me-1"></i><?= esc($a['original_name']) ?>
                     </a>
-                    <span class="text-muted small ms-2">by <?= esc($a['uploaded_by_name']) ?> · <?= esc(date('d/m/Y, g:i A', strtotime($a['created_at']))) ?></span>
+                    <span class="text-muted small ms-2">by <?= esc($a['uploaded_by_name']) ?> · <?= esc(erp_date($a['created_at']) . ", " . erp_time($a['created_at'])) ?></span>
                     <form action="<?= site_url('tasks/' . $task['id'] . '/attachments/' . $a['id'] . '/delete') ?>" method="post" class="ms-auto">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
@@ -120,7 +119,7 @@
             <?php foreach ($history as $h): ?>
                 <li class="list-group-item small">
                     <?= esc($h['from_status'] ?? '—') ?> → <strong><?= esc($h['to_status']) ?></strong>
-                    by <?= esc($h['changed_by_name']) ?> on <?= esc(date('d/m/Y, g:i A', strtotime($h['changed_at']))) ?>
+                    by <?= esc($h['changed_by_name']) ?> on <?= esc(erp_date($h['changed_at']) . ", " . erp_time($h['changed_at'])) ?>
                 </li>
             <?php endforeach; ?>
         </ul>

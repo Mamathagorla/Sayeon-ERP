@@ -10,7 +10,7 @@
 </style>
 <div class="card">
     <div class="card-body">
-        <form action="<?= $bill ? site_url('accounting/bills/' . $bill['id']) : site_url('accounting/bills') ?>" method="post" id="billForm">
+        <form data-erp-sections="headings" action="<?= $bill ? site_url('accounting/bills/' . $bill['id']) : site_url('accounting/bills') ?>" method="post" id="billForm">
             <?= csrf_field() ?>
 
             <h6 class="text-muted text-uppercase small fw-bold mb-2">Bill Details</h6>
@@ -45,6 +45,18 @@
                     <input type="date" name="due_date" class="form-control" value="<?= esc($bill['due_date'] ?? '') ?>">
                 </div>
             </div>
+
+            <?php if (! empty($purchaseOrders)): ?>
+            <div class="mb-3">
+                <label class="form-label">Purchase order <span class="text-muted small">(optional - the order this bill settles)</span></label>
+                <select name="purchase_order_id" id="bill-po" class="form-select">
+                    <option value="">None</option>
+                    <?php foreach ($purchaseOrders as $po): ?>
+                        <option value="<?= $po['id'] ?>" data-company="<?= $po['company_id'] ?>" <?= (($bill['purchase_order_id'] ?? null) == $po['id']) ? 'selected' : '' ?>><?= esc($po['po_number'] . ' - ' . $po['vendor_name'] . ' (' . number_format((float) $po['amount'], 2) . ')') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
 
             <h6 class="text-muted text-uppercase small fw-bold mb-2 mt-2">Vendor</h6>
             <div class="row">

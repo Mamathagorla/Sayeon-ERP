@@ -17,9 +17,14 @@ use Config\MeetingProviders;
  */
 class ZoomProvider implements MeetingProviderInterface
 {
+    use BoundedHttp;
+
     private const TOKEN_URL   = 'https://zoom.us/oauth/token';
     private const MEETINGS_API = 'https://api.zoom.us/v2/users/me/meetings';
     private const MEETING_API  = 'https://api.zoom.us/v2/meetings/';
+
+    /** How long an uncertain create attempt is remembered for reconciliation, in seconds. */
+    private const ATTEMPT_TTL = 900;
 
     private MeetingProviders $config;
 
@@ -47,16 +52,124 @@ class ZoomProvider implements MeetingProviderInterface
             return MeetingProviderResult::fail('Could not authenticate with Zoom: ' . $e->getMessage());
         }
 
+        // Zoom's create call has no idempotency key, so a request that timed out
+        // may or may not have created a meeting. Each submission carries a
+        // reference ("request_key") that is written into the meeting's agenda.
+        // While an earlier attempt with the same reference is remembered as
+        // uncertain, Zoom's own meeting list is searched for that reference
+        // BEFORE anything is created, and a match is adopted instead of
+        // duplicated.
+        $key = isset($meeting['request_key']) && $meeting['request_key'] !== '' ? (string) $meeting['request_key'] : null;
+
+        if ($key !== null && cache($this->attemptCacheKey($key)) !== null) {
+            $found = $this->findByReference($token, $key);
+
+            if ($found === null) {
+                return MeetingProviderResult::fail('An earlier attempt to create this Zoom meeting did not finish, and Zoom could not be checked to see whether it was created (the Zoom app needs the "View and manage all user meetings" / list-meetings scope for that check). To avoid a duplicate, check your Zoom account, or wait ' . (int) (self::ATTEMPT_TTL / 60) . ' minutes and try again.');
+            }
+
+            if ($found !== false) {
+                log_message('info', 'Zoom meeting from an earlier timed-out attempt was found and reused.');
+
+                return MeetingProviderResult::ok((string) $found['id'], $found['join_url']);
+            }
+        }
+
+        if ($key !== null) {
+            cache()->save($this->attemptCacheKey($key), time(), self::ATTEMPT_TTL);
+        }
+
         try {
-            $response = $this->client()->post(self::MEETINGS_API, [
+            $response = $this->http('post', self::MEETINGS_API, [
                 'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
-                'body'    => json_encode($this->meetingBody($meeting)),
-            ]);
+                'body'    => json_encode($this->meetingBody($meeting, $key)),
+            ], 'zoom.create');
         } catch (\Throwable $e) {
-            return MeetingProviderResult::fail('Zoom API request failed: ' . $e->getMessage());
+            // No answer: the meeting may exist. The attempt stays remembered so
+            // the retry reconciles instead of creating a second meeting.
+            return MeetingProviderResult::fail('Zoom did not answer in time (' . $e->getMessage() . '). The meeting may still have been created. Press Schedule again: the system checks Zoom first and will not create a duplicate.');
+        }
+
+        // A clear client error (4xx) means nothing was created; forget the attempt.
+        // A success is kept remembered until it expires, covering a failure while saving.
+        if ($key !== null && $response->getStatusCode() >= 400 && $response->getStatusCode() < 500) {
+            cache()->delete($this->attemptCacheKey($key));
         }
 
         return $this->resultFromMeetingResponse($response);
+    }
+
+    private function attemptCacheKey(string $key): string
+    {
+        return 'zoom_attempt_' . preg_replace('/[^A-Za-z0-9]/', '', $key);
+    }
+
+    /**
+     * Looks through the host's upcoming Zoom meetings for the one carrying this
+     * reference in its agenda, skipping any already linked to an ERP meeting.
+     *
+     * @return array{id: mixed, join_url: string}|false|null The meeting; false when the list was read and nothing matches; null when it could not be read reliably.
+     */
+    private function findByReference(string $token, string $key)
+    {
+        $marker    = $this->marker($key);
+        $pageToken = null;
+
+        try {
+            for ($page = 0; $page < 5; $page++) {
+                $query = ['type' => 'scheduled', 'page_size' => 300] + ($pageToken ? ['next_page_token' => $pageToken] : []);
+                $resp  = $this->http('get', self::MEETINGS_API, [
+                    'query'   => $query,
+                    'headers' => ['Authorization' => 'Bearer ' . $token],
+                ], 'zoom.list');
+                $data  = json_decode((string) $resp->getBody(), true);
+
+                if ($resp->getStatusCode() >= 300 || ! is_array($data) || ! isset($data['meetings']) || ! is_array($data['meetings'])) {
+                    return null;
+                }
+
+                // Without the agenda on the entries there is nothing to match on, so an
+                // empty answer cannot be trusted as "not created".
+                foreach ($data['meetings'] as $entry) {
+                    if (! array_key_exists('agenda', $entry)) {
+                        return null;
+                    }
+
+                    if (str_contains((string) $entry['agenda'], $marker) && ! $this->linkedToErp((string) $entry['id'])) {
+                        $joinUrl = $entry['join_url'] ?? $this->joinUrlOf($token, (string) $entry['id']);
+
+                        return $joinUrl === null ? null : ['id' => $entry['id'], 'join_url' => $joinUrl];
+                    }
+                }
+
+                $pageToken = $data['next_page_token'] ?? '';
+                if ($pageToken === '') {
+                    return false;
+                }
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return null; // more pages than are searched: cannot say it is absent
+    }
+
+    private function joinUrlOf(string $token, string $meetingId): ?string
+    {
+        $resp = $this->http('get', self::MEETING_API . rawurlencode($meetingId), ['headers' => ['Authorization' => 'Bearer ' . $token]], 'zoom.get');
+        $data = json_decode((string) $resp->getBody(), true) ?? [];
+
+        return $resp->getStatusCode() < 300 && ! empty($data['join_url']) ? (string) $data['join_url'] : null;
+    }
+
+    private function linkedToErp(string $zoomMeetingId): bool
+    {
+        return db_connect()->table('meetings')->where('provider', 'zoom')->where('provider_meeting_id', $zoomMeetingId)->countAllResults() > 0;
+    }
+
+    private function marker(string $key): string
+    {
+        return '[Ref ' . $key . ']';
     }
 
     public function updateMeeting(string $providerMeetingId, array $meeting, array $participantEmails): MeetingProviderResult
@@ -72,10 +185,10 @@ class ZoomProvider implements MeetingProviderInterface
         }
 
         try {
-            $response = $this->client()->patch(self::MEETING_API . rawurlencode($providerMeetingId), [
+            $response = $this->http('patch', self::MEETING_API . rawurlencode($providerMeetingId), [
                 'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
                 'body'    => json_encode($this->meetingBody($meeting)),
-            ]);
+            ], 'zoom.update');
         } catch (\Throwable $e) {
             return MeetingProviderResult::fail('Zoom API update failed: ' . $e->getMessage());
         }
@@ -102,9 +215,9 @@ class ZoomProvider implements MeetingProviderInterface
 
         try {
             $token = $this->accessToken();
-            $this->client()->delete(self::MEETING_API . rawurlencode($providerMeetingId), [
+            $this->http('delete', self::MEETING_API . rawurlencode($providerMeetingId), [
                 'headers' => ['Authorization' => 'Bearer ' . $token],
-            ]);
+            ], 'zoom.delete');
 
             return true;
         } catch (\Throwable $e) {
@@ -114,7 +227,7 @@ class ZoomProvider implements MeetingProviderInterface
         }
     }
 
-    private function meetingBody(array $meeting): array
+    private function meetingBody(array $meeting, ?string $key = null): array
     {
         $start    = $meeting['start_time'] ?: '09:00:00';
         $end      = $meeting['end_time'] ?: date('H:i:s', strtotime($start . ' +30 minutes'));
@@ -122,7 +235,10 @@ class ZoomProvider implements MeetingProviderInterface
 
         return [
             'topic'    => $meeting['title'],
-            'agenda'   => $meeting['agenda'] ?: '',
+            // Zoom caps the agenda at 2000 characters; the reference goes last and always fits.
+            'agenda'   => $key === null
+                ? ($meeting['agenda'] ?: '')
+                : mb_substr((string) ($meeting['agenda'] ?: ''), 0, 1900) . "\n\n" . $this->marker($key),
             'type'     => 2, // scheduled meeting
             'start_time' => $meeting['meeting_date'] . 'T' . $start,
             'duration' => $duration,
@@ -154,10 +270,10 @@ class ZoomProvider implements MeetingProviderInterface
 
     private function accessToken(): string
     {
-        $response = $this->client()->post(self::TOKEN_URL, [
+        $response = $this->http('post', self::TOKEN_URL, [
             'query'   => ['grant_type' => 'account_credentials', 'account_id' => $this->config->zoomAccountId],
             'headers' => ['Authorization' => 'Basic ' . base64_encode($this->config->zoomClientId . ':' . $this->config->zoomClientSecret)],
-        ]);
+        ], 'zoom.token');
 
         $data = json_decode((string) $response->getBody(), true) ?? [];
 
@@ -166,10 +282,5 @@ class ZoomProvider implements MeetingProviderInterface
         }
 
         return $data['access_token'];
-    }
-
-    private function client()
-    {
-        return \Config\Services::curlrequest(['http_errors' => false]);
     }
 }

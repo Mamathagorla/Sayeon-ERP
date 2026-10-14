@@ -6,25 +6,34 @@ use CodeIgniter\Model;
 
 class OnboardingRecordModel extends Model
 {
-    // Ordered — index+1 is "the next stage" (see nextStatus()). 'withdrawn'
-    // is a deliberate addition beyond the requested 11 stages: an exit
-    // path for a candidate who declines/fails BGV/is rejected, kept out
-    // of the linear sequence since it isn't "next" from anywhere.
+    // Ordered linear stages for nextStatus(). Rejection and withdrawal are
+    // terminal outcomes and deliberately live outside this sequence.
     public const STATUSES = [
-        'selected', 'offer_sent', 'offer_accepted', 'documents_pending', 'bgv',
-        'hr_verification', 'ready_to_join', 'joined', 'induction', 'probation', 'confirmed',
+        'candidate', 'selected_for_onboarding', 'link_sent', 'details_submitted',
+        'hr_review', 'approved', 'offer_sent', 'offer_accepted', 'documents_pending',
+        'bgv', 'hr_verification', 'ready_to_join', 'joining', 'joined', 'induction',
+        'probation', 'confirmed',
     ];
     public const WITHDRAWN = 'withdrawn';
+    public const REJECTED = 'rejected';
 
     public const STAGE_LABELS = [
+        'candidate'         => 'Candidate',
+        'selected_for_onboarding' => 'Selected for Onboarding',
+        'link_sent'         => 'Link Sent',
+        'details_submitted' => 'Details Submitted',
+        'hr_review'         => 'HR Review',
+        'approved'          => 'Approved',
+        'rejected'          => 'Rejected',
         'selected'          => 'Selected',
         'offer_sent'        => 'Offer Sent',
-        'offer_accepted'    => 'Offer Accepted',
+        'offer_accepted'    => 'Accepted',
         'documents_pending' => 'Documents Pending',
         'bgv'               => 'BGV',
         'hr_verification'   => 'HR Verification',
         'ready_to_join'     => 'Ready to Join',
-        'joined'            => 'Joined',
+        'joining'           => 'Joining',
+        'joined'            => 'Employee',
         'induction'         => 'Induction',
         'probation'         => 'Probation',
         'confirmed'         => 'Confirmed',
@@ -50,11 +59,33 @@ class OnboardingRecordModel extends Model
      * how the UI clusters and labels them.
      */
     public const STAGE_GROUPS = [
-        'Hiring'      => ['selected', 'offer_sent', 'offer_accepted'],
-        'Pre-Joining' => ['documents_pending', 'bgv', 'hr_verification', 'ready_to_join'],
+        'Hiring'      => ['candidate', 'selected_for_onboarding', 'link_sent', 'details_submitted', 'hr_review', 'approved', 'selected', 'offer_sent', 'offer_accepted'],
+        'Pre-Joining' => ['documents_pending', 'bgv', 'hr_verification', 'ready_to_join', 'joining'],
         'Joining'     => ['joined', 'induction', 'probation', 'confirmed'],
-        'Closed'      => ['withdrawn'],
+        'Closed'      => ['rejected', 'withdrawn'],
     ];
+
+    /**
+     * The candidate-journey stepper shared by the record page and the
+     * candidate-details page. Index = how many steps are behind the
+     * current status; -1 for closed outcomes (rejected / withdrawn).
+     */
+    public const PROGRESS_STEPS = ['Candidate', 'Selected', 'Details', 'HR Review', 'Approved', 'Offer', 'Joining', 'Completed'];
+
+    public static function progressIndexFor(string $status): int
+    {
+        return match ($status) {
+            'candidate' => 0,
+            'selected_for_onboarding', 'selected' => 1,
+            'link_sent' => 2,
+            'details_submitted', 'hr_review' => 3,
+            'approved' => 4,
+            'offer_sent' => 5,
+            'offer_accepted', 'documents_pending', 'bgv', 'hr_verification', 'ready_to_join', 'joining', 'joined', 'induction', 'probation' => 6,
+            'confirmed' => 8,
+            default => -1,
+        };
+    }
 
     public static function groupFor(string $status): string
     {
@@ -77,7 +108,7 @@ class OnboardingRecordModel extends Model
      * the Total/Not Started/In Progress/Completed counts.
      */
     public const SIMPLE_BUCKETS = [
-        'not_started' => ['selected', 'offer_sent', 'offer_accepted', 'documents_pending', 'bgv', 'hr_verification', 'ready_to_join'],
+        'not_started' => ['candidate', 'selected_for_onboarding', 'link_sent', 'details_submitted', 'hr_review', 'approved', 'selected', 'offer_sent', 'offer_accepted', 'documents_pending', 'bgv', 'hr_verification', 'ready_to_join', 'joining'],
         'in_progress' => ['joined', 'induction', 'probation'],
         'completed'   => ['confirmed'],
     ];
@@ -98,11 +129,13 @@ class OnboardingRecordModel extends Model
     protected $returnType    = 'array';
     protected $allowedFields = [
         'company_id', 'candidate_name', 'candidate_email', 'candidate_phone',
-        'department_id', 'designation', 'offered_ctc', 'reporting_manager_id', 'employee_profile_id',
+        'candidate_source', 'source_detail', 'date_of_birth', 'gender', 'highest_qualification',
+        'institution', 'graduation_year', 'address_line1', 'address_line2', 'city', 'state', 'postal_code', 'country',
+        'department_id', 'designation', 'job_description', 'offered_ctc', 'reporting_manager_id', 'employee_profile_id',
         'candidate_token', 'token_expires_at',
         'verification_status', 'verification_submitted_at', 'verification_reviewed_by', 'verification_reviewed_at', 'verification_notes',
         'offer_response', 'offer_response_at', 'offer_response_note',
-        'status', 'offer_sent_at', 'offer_accepted_at', 'bgv_status', 'bgv_notes',
+        'status', 'offer_sent_at', 'offer_accepted_at', 'joining_letter_sent_at', 'bgv_status', 'bgv_notes',
         'hr_verified_by', 'hr_verified_at', 'joining_date', 'joined_at',
         'probation_end_date', 'confirmed_at', 'created_by',
     ];
@@ -118,9 +151,23 @@ class OnboardingRecordModel extends Model
         'candidate_name'  => 'required|min_length[2]|max_length[150]|regex_match[/^[\p{L}\s.\'-]+$/u]',
         'candidate_email' => 'required|valid_email',
         'candidate_phone' => 'permit_empty|regex_match[/^[0-9]{10}$/]',
+        'candidate_source' => 'permit_empty|in_list[job_application,referral,agency,direct_hire]',
+        'source_detail' => 'permit_empty|max_length[190]',
+        'date_of_birth' => 'permit_empty|valid_date',
+        'gender' => 'permit_empty|max_length[40]',
+        'highest_qualification' => 'permit_empty|max_length[150]',
+        'institution' => 'permit_empty|max_length[190]',
+        'graduation_year' => 'permit_empty|integer|greater_than_equal_to[1950]|less_than_equal_to[2155]',
+        'address_line1' => 'permit_empty|max_length[190]',
+        'address_line2' => 'permit_empty|max_length[190]',
+        'city' => 'permit_empty|max_length[100]',
+        'state' => 'permit_empty|max_length[100]',
+        'postal_code' => 'permit_empty|max_length[20]',
+        'country' => 'permit_empty|max_length[100]',
         'designation'     => 'permit_empty|max_length[100]',
+        'job_description' => 'permit_empty|max_length[5000]',
         'offered_ctc'     => 'permit_empty|decimal|greater_than_equal_to[0]|less_than_equal_to[9999999999.99]',
-        'status'          => 'permit_empty|in_list[selected,offer_sent,offer_accepted,documents_pending,bgv,hr_verification,ready_to_join,joined,induction,probation,confirmed,withdrawn]',
+        'status'          => 'permit_empty|in_list[candidate,selected_for_onboarding,link_sent,details_submitted,hr_review,approved,rejected,selected,offer_sent,offer_accepted,documents_pending,bgv,hr_verification,ready_to_join,joining,joined,induction,probation,confirmed,withdrawn]',
         'bgv_status'      => 'permit_empty|in_list[not_started,in_progress,cleared,flagged]',
         'joining_date'    => 'permit_empty|valid_date',
         'verification_status' => 'permit_empty|in_list[pending,submitted,verified,correction_needed]',
@@ -140,6 +187,10 @@ class OnboardingRecordModel extends Model
 
     public function nextStatus(string $current): ?string
     {
+        if ($current === 'selected') {
+            return 'offer_sent';
+        }
+
         $index = array_search($current, self::STATUSES, true);
 
         if ($index === false || ! isset(self::STATUSES[$index + 1])) {
@@ -283,7 +334,7 @@ class OnboardingRecordModel extends Model
         $rows   = array_column($builder->findAll(), 'total', 'status');
         $counts = [];
 
-        foreach (array_merge(self::STATUSES, [self::WITHDRAWN]) as $status) {
+        foreach (array_merge(self::STATUSES, ['selected', self::REJECTED, self::WITHDRAWN]) as $status) {
             $counts[$status] = (int) ($rows[$status] ?? 0);
         }
 

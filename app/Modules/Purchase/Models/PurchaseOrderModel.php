@@ -133,4 +133,48 @@ class PurchaseOrderModel extends Model
 
         return 'PO-' . date('Y') . '-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
+
+    /** Non-cancelled bills recorded against this purchase order, with what has been paid on each. */
+    public function linkedBills(int $id): array
+    {
+        $bills = $this->db->table('bills')->where('purchase_order_id', $id)->where('status !=', 'cancelled')->orderBy('id')->get()->getResultArray();
+        $paid  = (new \App\Modules\Accounting\Models\PaymentModel())->paidMap('bill_id', array_map('intval', array_column($bills, 'id')));
+
+        foreach ($bills as &$b) {
+            $b['paid'] = $paid[(int) $b['id']] ?? 0.0;
+        }
+
+        return $bills;
+    }
+
+    /**
+     * Payment status follows Accounting once a bill is linked: "paid" when the bills cover the order's value and are
+     * fully paid, "partial" once any money has been paid, otherwise "pending". Orders without linked bills keep their
+     * manually set status. Called whenever a linked bill or one of its payments changes.
+     */
+    public function syncPaymentStatus(?int $id): void
+    {
+        $po = $id ? $this->find($id) : null;
+        if ($po === null) {
+            return;
+        }
+
+        $bills = $this->linkedBills((int) $id);
+        if ($bills === []) {
+            return;
+        }
+
+        $billed = round(array_sum(array_column($bills, 'amount')), 2);
+        $paid   = round(array_sum(array_column($bills, 'paid')), 2);
+
+        $status = match (true) {
+            $paid > 0 && $paid >= $billed && $billed >= (float) $po['amount'] => 'paid',
+            $paid > 0                                                         => 'partial',
+            default                                                           => 'pending',
+        };
+
+        if ($status !== $po['payment_status']) {
+            $this->update((int) $id, ['payment_status' => $status]);
+        }
+    }
 }

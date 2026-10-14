@@ -1,15 +1,8 @@
 <?= $this->extend('layouts/main') ?>
 
 <?php
-// Indian-style Lakh formatting for the big KPI figures — matches the
-// ₹ + "L" the rest of this app already uses for large amounts (see
-// Onboarding's Offered CTC). Under ₹1L just shows the plain rupee
-// amount instead of "0.42L", which reads oddly for small orgs/runs.
-$lakh = static function (float $n): string {
-    return $n >= 100000
-        ? '₹' . number_format($n / 100000, 2) . 'L'
-        : '₹' . number_format($n, 0);
-};
+// Money for the KPI figures, in the configured currency and locale.
+$money = static fn (float $n): string => erp_money($n);
 $run = $summary['run'] ?? null;
 
 // A payslip has no status of its own — every row in a run shares that
@@ -20,8 +13,8 @@ $runStatusLabel = $run ? ($run['status'] === 'paid' ? 'Paid' : 'Pending') : '';
 $runStatusBadge = $run && $run['status'] === 'paid' ? 'success' : 'warning';
 
 $exportRows = array_map(static fn (array $s) => [
-    $s['user_name'], $s['department_name'] ?? '', number_format((float) $s['gross'], 2),
-    number_format((float) $s['deductions'], 2), number_format((float) $s['net'], 2), $runStatusLabel,
+    $s['user_name'], $s['department_name'] ?? '', erp_number((float) $s['gross'], 2),
+    erp_number((float) $s['deductions'], 2), erp_number((float) $s['net'], 2), $runStatusLabel,
 ], $slips);
 ?>
 
@@ -39,7 +32,6 @@ $exportRows = array_map(static fn (array $s) => [
     .sy-pr-filters .form-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--sy-muted); margin-bottom: 4px; }
 </style>
 
-<p class="text-muted mb-3">Manage salary processing and payroll records.</p>
 
 <?php if (empty($summary)): ?>
     <div class="sy-card" style="height:auto"><div class="sy-card-body"><p class="text-muted mb-0">No payroll runs yet<?= can('payroll.create') ? ' — use "Run Payroll" to generate the first one.' : '.' ?></p></div></div>
@@ -48,9 +40,9 @@ $exportRows = array_map(static fn (array $s) => [
 <!-- KPI cards -->
 <div class="row row-cols-2 row-cols-lg-4 g-3 mb-3">
     <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">EMPLOYEES</div><div class="sy-stat-value"><?= $summary['employees'] ?></div></div></div>
-    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">GROSS PAY</div><div class="sy-stat-value"><?= esc($lakh($summary['gross'])) ?></div></div></div>
-    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">DEDUCTIONS</div><div class="sy-stat-value"><?= esc($lakh($summary['deductions'])) ?></div></div></div>
-    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">NET PAY</div><div class="sy-stat-value"><?= esc($lakh($summary['net'])) ?></div></div></div>
+    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">GROSS PAY</div><div class="sy-stat-value"><?= esc($money($summary['gross'])) ?></div></div></div>
+    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">DEDUCTIONS</div><div class="sy-stat-value"><?= esc($money($summary['deductions'])) ?></div></div></div>
+    <div class="col"><div class="sy-stat-card"><div class="sy-stat-label">NET PAY</div><div class="sy-stat-value"><?= esc($money($summary['net'])) ?></div></div></div>
 </div>
 
 <!-- Period + status -->
@@ -91,9 +83,9 @@ $exportRows = array_map(static fn (array $s) => [
                 <tr>
                     <td><a href="<?= site_url('hr/payroll/employee/' . $s['user_id']) ?>" class="text-decoration-none fw-semibold text-dark"><?= esc($s['user_name']) ?></a></td>
                     <td class="text-muted small"><?= esc($s['department_name'] ?? '—') ?></td>
-                    <td><?= number_format((float) $s['gross'], 2) ?></td>
-                    <td><?= number_format((float) $s['deductions'], 2) ?></td>
-                    <td class="fw-semibold"><?= number_format((float) $s['net'], 2) ?></td>
+                    <td><?= erp_number((float) $s['gross'], 2) ?></td>
+                    <td><?= erp_number((float) $s['deductions'], 2) ?></td>
+                    <td class="fw-semibold"><?= erp_number((float) $s['net'], 2) ?></td>
                     <td><span class="badge bg-<?= $runStatusBadge ?>"><?= esc($runStatusLabel) ?></span></td>
                 </tr>
             <?php endforeach; ?>

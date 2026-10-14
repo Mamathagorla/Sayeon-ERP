@@ -10,7 +10,6 @@
     <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1"></i>Delete</button>
 </form>
 <?php endif; ?>
-<a href="<?= site_url('policies') ?>" class="btn btn-light btn-sm">Back to list</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -29,7 +28,7 @@
         <div class="row small">
             <div class="col-md-3 mb-2"><span class="text-muted">Owner</span><br><?= esc($policy['owner_name'] ?? '—') ?></div>
             <div class="col-md-3 mb-2"><span class="text-muted">Version</span><br><?= esc($policy['version'] ?: '—') ?></div>
-            <div class="col-md-3 mb-2"><span class="text-muted">Last Review</span><br><?= $policy['last_review_date'] ? esc(date('d/m/Y', strtotime($policy['last_review_date']))) : '—' ?></div>
+            <div class="col-md-3 mb-2"><span class="text-muted">Last Review</span><br><?= $policy['last_review_date'] ? esc(erp_date($policy['last_review_date'])) : '—' ?></div>
             <div class="col-md-3 mb-2"><span class="text-muted">Retention</span><br><?= $policy['retention_years'] !== null ? esc($policy['retention_years']) . ' Year' . ($policy['retention_years'] == 1 ? '' : 's') : '—' ?></div>
         </div>
     </div>

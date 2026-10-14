@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-8">
     <div class="card-body">
-        <form action="<?= $company ? site_url('companies/' . $company['id']) : site_url('companies') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Company Details" action="<?= $company ? site_url('companies/' . $company['id']) : site_url('companies') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -21,31 +21,36 @@
                         <option value="inactive" <?= (($company['status'] ?? '') === 'inactive') ? 'selected' : '' ?>>Inactive</option>
                     </select>
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Location &amp; Ownership"></div>
                 <div class="col-md-2 mb-3">
                     <label class="form-label">Country</label>
-                    <select name="country_id" class="form-select" required>
+                    <select name="country_id" id="companyCountry" class="form-select" required>
                         <option value="">Select country</option>
                         <?php foreach ($countries as $c): ?>
                             <option value="<?= $c['id'] ?>" <?= (($company['country_id'] ?? old('country_id')) == $c['id']) ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-12 mb-2">
-                    <div class="form-text mt-0">Short Code prefixes every ID this company gets: employees (SAY001), projects (SAY-P001), tasks (SAY-T001), invoices (SAY-INV001).</div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">State</label>
+                    <select name="state_id" id="companyState" class="form-select">
+                        <option value="">— Not set —</option>
+                    </select>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Owner</label>
-                    <select name="owner_id" class="form-select">
-                        <option value="">— Unassigned —</option>
-                        <?php foreach ($owners as $o): ?>
-                            <option value="<?= $o['id'] ?>" <?= (($company['owner_id'] ?? null) == $o['id']) ? 'selected' : '' ?>><?= esc($o['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php $ownerName = ''; foreach ($owners as $o) { if (($company['owner_id'] ?? null) == $o['id']) { $ownerName = $o['name']; } } ?>
+                    <input type="text" id="companyOwnerInput" class="form-control" list="companyOwnerList" value="<?= esc($ownerName) ?>" placeholder="Type a name" autocomplete="off">
+                    <datalist id="companyOwnerList">
+                        <?php foreach ($owners as $o): ?><option value="<?= esc($o['name']) ?>" data-id="<?= $o['id'] ?>"></option><?php endforeach; ?>
+                    </datalist>
+                    <input type="hidden" name="owner_id" id="companyOwnerId" value="<?= esc($company['owner_id'] ?? '') ?>">
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Incorporation Date</label>
                     <input type="date" name="incorporation_date" class="form-control" value="<?= esc($company['incorporation_date'] ?? '') ?>">
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Registration &amp; Tax"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">CIN</label>
                     <input type="text" name="cin" class="form-control" value="<?= esc($company['cin'] ?? '') ?>" maxlength="21" style="text-transform:uppercase" pattern="[LUlu][0-9]{5}[A-Za-z]{2}[0-9]{4}[A-Za-z]{3}[0-9]{6}" title="Enter a valid 21-character CIN, e.g. U74999MH2019PTC321001">
@@ -68,4 +73,44 @@
         </form>
     </div>
 </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // country_id => [{id, name, gstStateCode}, ...] — the same data the invoice and customer forms use.
+    const statesByCountry = <?= json_encode($statesByCountry ?? []) ?>;
+    const savedStateId    = <?= json_encode($company['state_id'] ?? old('state_id')) ?>;
+    const countrySelect   = document.getElementById('companyCountry');
+    const stateSelect     = document.getElementById('companyState');
+
+    // Refills the State list for the chosen Country. A state from another
+    // country is never kept, so the server's country check can't fail silently.
+    function fillStates(selectedId) {
+        stateSelect.innerHTML = '<option value="">— Not set —</option>';
+        (statesByCountry[countrySelect.value] || []).forEach(function (s) {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            if (String(s.id) === String(selectedId)) opt.selected = true;
+            stateSelect.appendChild(opt);
+        });
+    }
+
+    // Owner: type a name; the matching user's id is what gets submitted (empty = unassigned).
+    const ownerInput = document.getElementById('companyOwnerInput');
+    const ownerId    = document.getElementById('companyOwnerId');
+    const ownerIds   = {};
+    document.querySelectorAll('#companyOwnerList option').forEach(function (o) { ownerIds[o.value.trim().toLowerCase()] = o.dataset.id; });
+    function syncOwner() {
+        const v = ownerInput.value.trim().toLowerCase();
+        ownerId.value = v === '' ? '' : (ownerIds[v] || '');
+        ownerInput.setCustomValidity(v !== '' && !ownerIds[v] ? 'Choose a name from the list.' : '');
+    }
+    ownerInput.addEventListener('input', syncOwner);
+
+    fillStates(savedStateId);
+    countrySelect.addEventListener('change', function () { fillStates(null); });
+});
+</script>
 <?= $this->endSection() ?>

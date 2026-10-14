@@ -115,7 +115,7 @@ $empTypeLabels = ['full_time' => 'Full Time', 'part_time' => 'Part Time', 'contr
     </div>
 
     <div class="letter-meta">
-        <div class="date">Date: <?= esc(date('d/m/Y', strtotime($record['joined_at']))) ?></div>
+        <div class="date">Date: <?= esc(erp_date($record['joined_at'])) ?></div>
         <div>To,</div>
         <div><?= esc($record['candidate_name']) ?></div>
         <?php if (! empty($record['candidate_email'])): ?><div><?= esc($record['candidate_email']) ?></div><?php endif; ?>
@@ -146,9 +146,9 @@ $empTypeLabels = ['full_time' => 'Full Time', 'part_time' => 'Part Time', 'contr
             <?php if (! empty($record['manager_name'])): ?>
             <div class="detail-row"><span class="k">Reporting Manager</span><span><?= esc($record['manager_name']) ?></span></div>
             <?php endif; ?>
-            <div class="detail-row"><span class="k">Date of Joining</span><span><?= esc(date('d/m/Y', strtotime($record['joined_at']))) ?></span></div>
+            <div class="detail-row"><span class="k">Date of Joining</span><span><?= esc(erp_date($record['joined_at'])) ?></span></div>
             <?php if (! empty($record['probation_end_date'])): ?>
-            <div class="detail-row"><span class="k">Probation Ends</span><span><?= esc(date('d/m/Y', strtotime($record['probation_end_date']))) ?></span></div>
+            <div class="detail-row"><span class="k">Probation Ends</span><span><?= esc(erp_date($record['probation_end_date'])) ?></span></div>
             <?php endif; ?>
         </div>
 

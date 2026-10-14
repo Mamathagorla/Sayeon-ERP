@@ -145,7 +145,7 @@ class OffboardingTaskModel extends Model
     {
         $phaseModel = new OffboardingPhaseModel();
 
-        $rows = array_map(static function (array $t) use ($phaseModel) {
+        $rows = array_map(static function (array $t) use ($phaseModel, $offboardingRecordId) {
             return [
                 'offboarding_record_id' => $offboardingRecordId,
                 'task_type'              => $t['type'],

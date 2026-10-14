@@ -10,7 +10,7 @@
 </style>
 <div class="card">
     <div class="card-body">
-        <form action="<?= $invoice ? site_url('accounting/invoices/' . $invoice['id']) : site_url('accounting/invoices') ?>" method="post" id="invoiceForm">
+        <form data-erp-sections="headings" action="<?= $invoice ? site_url('accounting/invoices/' . $invoice['id']) : site_url('accounting/invoices') ?>" method="post" id="invoiceForm">
             <?= csrf_field() ?>
 
             <h6 class="text-muted text-uppercase small fw-bold mb-2">Invoice Details</h6>
@@ -149,7 +149,7 @@
                                     <option value="<?= $t ?>" <?= (($invoice['gst_type'] ?? 'intra_state') === $t) ? 'selected' : '' ?>><?= $t === 'inter_state' ? 'Inter-state (IGST)' : 'Intra-state (CGST + SGST)' ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <div class="form-text" id="gstTypeHint">Auto-set from the company's and customer's state once both are picked — change it yourself if this invoice is an exception.</div>
+                            <div class="form-text" id="gstTypeHint">GST type is determined automatically from the company's and customer's states when both are available.</div>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -276,8 +276,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const companyStateId  = companyStateById[companySelect.value];
         const customerStateId = stateSelect.value;
 
+        // A selected company with no state can't be classified, so say which
+        // part is missing instead of asking for a choice that can't resolve.
+        if (companySelect.value && companyStateId === null) {
+            gstTypeHint.textContent = 'This company has no state yet, so the GST type can\'t be auto-set. Add its state on the company page, or choose the GST type yourself.';
+            return;
+        }
+
         if (! companyStateId || ! customerStateId) {
-            gstTypeHint.textContent = 'Pick the company and the customer\'s state to auto-set this — change it yourself if this invoice is an exception.';
+            gstTypeHint.textContent = 'GST type is determined automatically from the company\'s and customer\'s states. Pick the company and the customer\'s state to set it.';
             return;
         }
 

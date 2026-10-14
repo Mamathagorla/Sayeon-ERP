@@ -40,13 +40,13 @@
 
 <div class="row g-3 mb-3">
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-success"><?= number_format($totalRevenue, 2) ?></div><div class="text-muted small">Total Revenue</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-success"><?= erp_number($totalRevenue, 2) ?></div><div class="text-muted small">Total Revenue</div></div></div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-danger"><?= number_format($totalExpenses, 2) ?></div><div class="text-muted small">Total Expenses</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-danger"><?= erp_number($totalExpenses, 2) ?></div><div class="text-muted small">Total Expenses</div></div></div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold <?= $netProfit >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($netProfit, 2) ?></div><div class="text-muted small">Net Profit</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold <?= $netProfit >= 0 ? 'text-success' : 'text-danger' ?>"><?= erp_number($netProfit, 2) ?></div><div class="text-muted small">Net Profit</div></div></div>
     </div>
     <div class="col-md-3">
         <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= $margin !== null ? esc($margin) . '%' : '—' ?></div><div class="text-muted small">Margin</div></div></div>
@@ -76,9 +76,9 @@
                     <td>Invoiced Revenue</td>
                     <td class="text-muted small">Income</td>
                     <?php foreach ($perMonth as $m): ?>
-                        <td class="text-end"><?= number_format($m['revenue'], 2) ?></td>
+                        <td class="text-end"><?= erp_number($m['revenue'], 2) ?></td>
                     <?php endforeach; ?>
-                    <td class="text-end fw-semibold"><?= number_format($totalRevenue, 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number($totalRevenue, 2) ?></td>
                 </tr>
 
                 <tr class="table-light"><td colspan="<?= 3 + count($perMonth) ?>"><strong>EXPENSES</strong></td></tr>
@@ -90,9 +90,9 @@
                     <td><?= esc($cat) ?></td>
                     <td class="text-muted small">Operating</td>
                     <?php foreach ($perMonth as $m): ?>
-                        <td class="text-end text-danger">-<?= number_format($m['byCategory'][$cat] ?? 0, 2) ?></td>
+                        <td class="text-end text-danger">-<?= erp_number($m['byCategory'][$cat] ?? 0, 2) ?></td>
                     <?php endforeach; ?>
-                    <td class="text-end text-danger fw-semibold">-<?= number_format($categoryTotals[$cat], 2) ?></td>
+                    <td class="text-end text-danger fw-semibold">-<?= erp_number($categoryTotals[$cat], 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if ($totalVendorBills > 0): ?>
@@ -100,25 +100,25 @@
                     <td>Vendor Bills</td>
                     <td class="text-muted small">Payables</td>
                     <?php foreach ($perMonth as $m): ?>
-                        <td class="text-end text-danger">-<?= number_format($m['vendorBills'], 2) ?></td>
+                        <td class="text-end text-danger">-<?= erp_number($m['vendorBills'], 2) ?></td>
                     <?php endforeach; ?>
-                    <td class="text-end text-danger fw-semibold">-<?= number_format($totalVendorBills, 2) ?></td>
+                    <td class="text-end text-danger fw-semibold">-<?= erp_number($totalVendorBills, 2) ?></td>
                 </tr>
                 <?php endif; ?>
                 <tr class="table-secondary">
                     <td colspan="2"><strong>Total Expenses</strong></td>
                     <?php foreach ($perMonth as $m): ?>
-                        <td class="text-end"><strong>-<?= number_format($m['totalExpenses'], 2) ?></strong></td>
+                        <td class="text-end"><strong>-<?= erp_number($m['totalExpenses'], 2) ?></strong></td>
                     <?php endforeach; ?>
-                    <td class="text-end"><strong>-<?= number_format($totalExpenses, 2) ?></strong></td>
+                    <td class="text-end"><strong>-<?= erp_number($totalExpenses, 2) ?></strong></td>
                 </tr>
 
                 <tr class="<?= $netProfit >= 0 ? 'table-success' : 'table-danger' ?>">
                     <td colspan="2"><strong>NET PROFIT</strong></td>
                     <?php foreach ($perMonth as $m): ?>
-                        <td class="text-end"><strong><?= number_format($m['netProfit'], 2) ?></strong></td>
+                        <td class="text-end"><strong><?= erp_number($m['netProfit'], 2) ?></strong></td>
                     <?php endforeach; ?>
-                    <td class="text-end"><strong><?= number_format($netProfit, 2) ?></strong></td>
+                    <td class="text-end"><strong><?= erp_number($netProfit, 2) ?></strong></td>
                 </tr>
             </tbody>
         </table>

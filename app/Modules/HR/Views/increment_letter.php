@@ -104,7 +104,7 @@
     </div>
 
     <div class="letter-meta">
-        <div class="date">Date: <?= esc(date('d/m/Y', strtotime($letter['created_at']))) ?></div>
+        <div class="date">Date: <?= esc(erp_date($letter['created_at'])) ?></div>
         <div>To,</div>
         <div><?= esc($letter['user_name']) ?></div>
         <?php if (! empty($letter['employee_code'])): ?><div><?= esc($letter['employee_code']) ?></div><?php endif; ?>
@@ -119,15 +119,15 @@
         <p>
             We are pleased to inform you that, in recognition of your contribution
             <?= $letter['reason'] ? 'and ' . esc(lcfirst($letter['reason'])) : '' ?>,
-            your compensation has been revised with effect from <strong><?= esc(date('d M Y', strtotime($letter['effective_date']))) ?></strong>.
+            your compensation has been revised with effect from <strong><?= esc(erp_date($letter['effective_date'])) ?></strong>.
         </p>
 
         <h3>Compensation Revision</h3>
         <div class="ctc-box">
             <?php if ($letter['previous_ctc'] !== null): ?>
-            <div class="ctc-row"><span class="k">Previous Annual CTC</span><span>&#8377; <?= number_format((float) $letter['previous_ctc'], 2) ?></span></div>
+            <div class="ctc-row"><span class="k">Previous Annual CTC</span><span><?= erp_money((float) $letter['previous_ctc']) ?></span></div>
             <?php endif; ?>
-            <div class="ctc-row"><span class="k">Revised Annual CTC</span><span>&#8377; <?= number_format((float) $letter['new_ctc'], 2) ?></span></div>
+            <div class="ctc-row"><span class="k">Revised Annual CTC</span><span><?= erp_money((float) $letter['new_ctc']) ?></span></div>
         </div>
         <p style="color:var(--muted);"><em>The detailed revised salary structure will be provided separately.</em></p>
 

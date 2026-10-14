@@ -48,7 +48,7 @@ $empTypeLabels = ['full_time' => 'Full Time', 'part_time' => 'Part Time', 'contr
     </table>
 
     <div class="meta">
-        <div class="date">Date: <?= esc(date('d/m/Y')) ?></div>
+        <div class="date">Date: <?= esc(erp_date(date('Y-m-d'))) ?></div>
         <div>To,</div>
         <div><?= esc($record['candidate_name']) ?></div>
         <?php if (! empty($record['candidate_email'])): ?><div><?= esc($record['candidate_email']) ?></div><?php endif; ?>
@@ -69,13 +69,13 @@ $empTypeLabels = ['full_time' => 'Full Time', 'part_time' => 'Part Time', 'contr
         <?php if (! empty($record['department_name'])): ?><tr><td class="k">Department</td><td><?= esc($record['department_name']) ?></td></tr><?php endif; ?>
         <?php if (! empty($record['employment_type']) && isset($empTypeLabels[$record['employment_type']])): ?><tr><td class="k">Employment Type</td><td><?= esc($empTypeLabels[$record['employment_type']]) ?></td></tr><?php endif; ?>
         <?php if (! empty($record['manager_name'])): ?><tr><td class="k">Reporting Manager</td><td><?= esc($record['manager_name']) ?></td></tr><?php endif; ?>
-        <tr><td class="k">Joining Date</td><td><?= ! empty($record['joining_date']) ? esc(date('d/m/Y', strtotime($record['joining_date']))) : '—' ?></td></tr>
+        <tr><td class="k">Joining Date</td><td><?= ! empty($record['joining_date']) ? esc(erp_date($record['joining_date'])) : '—' ?></td></tr>
     </table>
 
     <h3>Compensation</h3>
     <?php if ($record['offered_ctc'] !== null): ?>
-        <p>Your annual CTC will be Rs. <?= number_format((float) $record['offered_ctc'], 2) ?>.</p>
-        <div class="ctc">Annual CTC: Rs. <?= number_format((float) $record['offered_ctc'], 2) ?></div>
+        <p>Your annual CTC will be Rs. <?= erp_number((float) $record['offered_ctc'], 2) ?>.</p>
+        <div class="ctc">Annual CTC: Rs. <?= erp_number((float) $record['offered_ctc'], 2) ?></div>
         <p style="color:#666;"><em>The detailed salary structure will be provided separately.</em></p>
     <?php else: ?>
         <p style="color:#666;"><em>Compensation details to be confirmed separately.</em></p>

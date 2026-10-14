@@ -53,7 +53,8 @@ class WebsiteModel extends Model
         $builder = $this->select('websites.*, companies.name as company_name')
             ->join('companies', 'companies.id = websites.company_id');
 
-        if (! empty($filters['company_id'])) {
+        // array_key_exists, not empty(): 0 = "viewer has no company yet" must match zero rows, not every company.
+        if (array_key_exists('company_id', $filters) && $filters['company_id'] !== null && $filters['company_id'] !== '') {
             $builder->where('websites.company_id', $filters['company_id']);
         }
         if (! empty($filters['status'])) {

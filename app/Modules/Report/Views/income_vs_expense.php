@@ -16,7 +16,7 @@ $ivseTrendBadge = static function (array $trend, bool $higherIsGood = true): str
     $arrow   = $percent >= 0 ? 'up' : 'down';
 
     return '<span class="badge ' . ($good ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger') . '">'
-        . '<i class="fas fa-arrow-' . $arrow . ' me-1"></i>' . number_format(abs($percent), 2) . '%</span>';
+        . '<i class="fas fa-arrow-' . $arrow . ' me-1"></i>' . erp_number(abs($percent), 2) . '%</span>';
 };
 ?>
 
@@ -72,7 +72,7 @@ $ivseTrendBadge = static function (array $trend, bool $higherIsGood = true): str
                 <?= $ivseTrendBadge($incomeTrend, true) ?>
             </div>
             <div class="sy-stat-label mt-2">TOTAL INCOME</div>
-            <div class="sy-stat-value fs-4"><?= number_format($totalIncome, 2) ?></div>
+            <div class="sy-stat-value fs-4"><?= erp_number($totalIncome, 2) ?></div>
         </div>
     </div>
     <div class="col">
@@ -82,7 +82,7 @@ $ivseTrendBadge = static function (array $trend, bool $higherIsGood = true): str
                 <?= $ivseTrendBadge($expenseTrend, false) ?>
             </div>
             <div class="sy-stat-label mt-2">TOTAL EXPENSES</div>
-            <div class="sy-stat-value fs-4"><?= number_format($totalExpenses, 2) ?></div>
+            <div class="sy-stat-value fs-4"><?= erp_number($totalExpenses, 2) ?></div>
         </div>
     </div>
     <div class="col">
@@ -92,7 +92,7 @@ $ivseTrendBadge = static function (array $trend, bool $higherIsGood = true): str
                 <?= $ivseTrendBadge($differenceTrend, true) ?>
             </div>
             <div class="sy-stat-label mt-2">NET DIFFERENCE</div>
-            <div class="sy-stat-value fs-4 <?= $netDifference >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($netDifference, 2) ?></div>
+            <div class="sy-stat-value fs-4 <?= $netDifference >= 0 ? 'text-success' : 'text-danger' ?>"><?= erp_number($netDifference, 2) ?></div>
         </div>
     </div>
     <div class="col">
@@ -102,7 +102,7 @@ $ivseTrendBadge = static function (array $trend, bool $higherIsGood = true): str
                 <?= $ivseTrendBadge($ratioTrend, false) ?>
             </div>
             <div class="sy-stat-label mt-2">EXPENSE RATIO</div>
-            <div class="sy-stat-value fs-4"><?= $expenseRatio === null ? '—' : number_format($expenseRatio, 1) . '%' ?></div>
+            <div class="sy-stat-value fs-4"><?= $expenseRatio === null ? '—' : erp_number($expenseRatio, 1) . '%' ?></div>
         </div>
     </div>
 </div>
@@ -134,9 +134,9 @@ $ivseTrendBadge = static function (array $trend, bool $higherIsGood = true): str
             <?php foreach ($rows as $r): ?>
                 <tr data-period="<?= esc(mb_strtolower($r['label'])) ?>">
                     <td class="fw-semibold"><?= esc($r['label']) ?></td>
-                    <td class="text-end text-success">+<?= number_format($r['income'], 2) ?></td>
-                    <td class="text-end text-danger">-<?= number_format($r['expense'], 2) ?></td>
-                    <td class="text-end fw-semibold <?= $r['difference'] >= 0 ? 'text-success' : 'text-danger' ?>"><?= $r['difference'] >= 0 ? '+' : '' ?><?= number_format($r['difference'], 2) ?></td>
+                    <td class="text-end text-success">+<?= erp_number($r['income'], 2) ?></td>
+                    <td class="text-end text-danger">-<?= erp_number($r['expense'], 2) ?></td>
+                    <td class="text-end fw-semibold <?= $r['difference'] >= 0 ? 'text-success' : 'text-danger' ?>"><?= $r['difference'] >= 0 ? '+' : '' ?><?= erp_number($r['difference'], 2) ?></td>
                     <td class="text-end"><?= $ivseTrendBadge($r['trend'], true) ?></td>
                 </tr>
             <?php endforeach; ?>

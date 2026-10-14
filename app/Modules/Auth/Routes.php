@@ -26,4 +26,8 @@ $routes->group('auth', ['namespace' => 'App\Modules\Auth\Controllers'], static f
     $routes->get('roles', 'RoleController::index', ['filter' => 'permission:role.view']);
     $routes->get('roles/(:num)/edit', 'RoleController::edit/$1', ['filter' => 'permission:role.edit']);
     $routes->post('roles/(:num)', 'RoleController::update/$1', ['filter' => 'permission:role.edit']);
+
+    // Organization localization settings (country, currency, timezone, locale, formats).
+    $routes->get('localization', 'LocalizationController::index', ['filter' => 'permission:setting.view']);
+    $routes->post('localization', 'LocalizationController::save', ['filter' => 'permission:setting.edit']);
 });

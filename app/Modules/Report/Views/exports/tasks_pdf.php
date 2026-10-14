@@ -36,7 +36,7 @@
                 <td><?= esc($t['assignee_name'] ?? 'Unassigned') ?></td>
                 <td><?= esc(ucfirst($t['priority'])) ?></td>
                 <td><?= esc(ucwords(str_replace('_', ' ', $t['status']))) ?></td>
-                <td><?= $t['due_date'] ? esc(date('d/m/Y', strtotime($t['due_date']))) : '-' ?></td>
+                <td><?= $t['due_date'] ? esc(erp_date($t['due_date'])) : '-' ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody>

@@ -73,6 +73,10 @@ class InvoiceController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only create invoices for your own company.');
         }
 
+        if ($stateError = $this->stateError()) {
+            return redirect()->back()->withInput()->with('error', $stateError);
+        }
+
         $items = $this->parseItems();
 
         if ($items === null) {
@@ -138,6 +142,10 @@ class InvoiceController extends BaseController
             return redirect()->to('/accounting/invoices')->with('error', 'Invoice not found.');
         }
 
+        if (($templated = $this->templatedDocument('invoice', $id, true)) !== null) {
+            return $templated;
+        }
+
         return view('App\Modules\Accounting\invoices/print', $data);
     }
 
@@ -153,6 +161,10 @@ class InvoiceController extends BaseController
 
         if ($invoice === null) {
             return redirect()->to('/accounting/invoices')->with('error', 'Invoice not found.');
+        }
+
+        if (($templated = $this->templatedDocument('invoice', $id, false)) !== null) {
+            return $templated;
         }
 
         $options = new Options();
@@ -242,6 +254,10 @@ class InvoiceController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only assign invoices to your own company.');
         }
 
+        if ($stateError = $this->stateError()) {
+            return redirect()->back()->withInput()->with('error', $stateError);
+        }
+
         $items = $this->parseItems();
 
         if ($items === null) {
@@ -264,6 +280,13 @@ class InvoiceController extends BaseController
         $this->invoiceModel->skipValidation(true);
         $this->invoiceModel->update($id, $this->payload(false, $totals, $gstType));
         $this->itemModel->replaceForInvoice($id, $totals['items']);
+
+        // The total may have changed after payments were taken: keep the status consistent with what was actually paid.
+        $posted = (string) ($this->request->getPost('status') ?: 'draft');
+        $paid   = $this->paymentModel->totalForInvoice($id);
+        if ($paid > 0 && $posted !== 'cancelled') {
+            $this->invoiceModel->update($id, ['status' => $paid >= (float) $totals['amount'] ? 'paid' : 'partially_paid']);
+        }
         $this->logActivity('accounting', 'update', $id, 'Updated invoice #' . $id);
 
         return redirect()->to('/accounting/invoices/' . $id)->with('success', 'Invoice updated.');
@@ -275,6 +298,11 @@ class InvoiceController extends BaseController
 
         if ($invoice === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $invoice['company_id'])) {
             return redirect()->to('/accounting/invoices')->with('error', 'Invoice not found.');
+        }
+
+        // Deleting would also delete (FK cascade) the payments recorded against it and so rewrite the cash ledger.
+        if ($this->paymentModel->where('invoice_id', $id)->countAllResults() > 0) {
+            return redirect()->to('/accounting/invoices/' . $id)->with('error', 'This invoice has payments recorded against it and cannot be deleted. Set its status to Cancelled instead.');
         }
 
         $this->invoiceModel->delete($id);
@@ -422,6 +450,26 @@ class InvoiceController extends BaseController
 
         return determine_gst_type($company['state_id'] ?? null, $customerStateId ? (int) $customerStateId : null)
             ?? (string) $this->request->getPost('gst_type');
+    }
+
+    /**
+     * A customer's state must belong to the customer's country, the same rule
+     * as CompanyController::stateError(). A blank state is allowed. Checked
+     * before any GST is calculated, so an invalid pair is never saved.
+     */
+    private function stateError(): ?string
+    {
+        $stateId = $this->request->getPost('customer_state_id') ?: null;
+
+        if ($stateId === null) {
+            return null;
+        }
+
+        $state = $this->stateModel->find((int) $stateId);
+
+        return $state !== null && (int) $state['country_id'] === (int) $this->request->getPost('customer_country_id')
+            ? null
+            : 'Choose a state from the selected customer country.';
     }
 
     /**

@@ -2,17 +2,16 @@
 
 <?php
 $statusBadge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger', 'cancelled' => 'secondary'];
-$num         = static fn ($n): string => rtrim(rtrim(number_format((float) $n, 1), '0'), '.');
+$num         = static fn ($n): string => rtrim(rtrim(erp_number((float) $n, 1), '0'), '.');
 $currentYear = (int) date('Y');
 
 $exportRows = array_map(static fn (array $r) => [
-    $r['leave_type_name'], date('d/m/Y', strtotime($r['start_date'])), date('d/m/Y', strtotime($r['end_date'])),
+    $r['leave_type_name'], erp_date($r['start_date']), erp_date($r['end_date']),
     $r['days'], $r['reason'] ?? '', ucfirst($r['status']),
 ], $records);
 ?>
 
 <?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/leave') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Leave</a>
 <button type="button" class="btn btn-outline-secondary btn-sm" id="leaveExport"><i class="fas fa-download me-1"></i>Export Report</button>
 <?= $this->endSection() ?>
 
@@ -22,8 +21,6 @@ $exportRows = array_map(static fn (array $r) => [
     .sy-lv-row { cursor: pointer; }
     .sy-lv-filters .form-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--sy-muted); margin-bottom: 4px; }
 </style>
-
-<div class="sy-pf-crumb"><a href="<?= site_url('hr/leave') ?>"><i class="fas fa-arrow-left me-1"></i>Back to Leave</a></div>
 
 <!-- Employee header -->
 <div class="sy-card sy-pf-head mb-3" style="height:auto">
@@ -124,16 +121,16 @@ $exportRows = array_map(static fn (array $r) => [
             <?php foreach ($records as $r): ?>
                 <tr class="sy-lv-row"
                     data-type="<?= esc($r['leave_type_name']) ?>"
-                    data-from="<?= esc(date('d M Y', strtotime($r['start_date']))) ?>"
-                    data-to="<?= esc(date('d M Y', strtotime($r['end_date']))) ?>"
+                    data-from="<?= esc(erp_date($r['start_date'])) ?>"
+                    data-to="<?= esc(erp_date($r['end_date'])) ?>"
                     data-days="<?= esc($num($r['days'])) ?>"
                     data-reason="<?= esc($r['reason'] ?: 'No reason given.') ?>"
                     data-status="<?= esc(ucfirst($r['status'])) ?>"
                     data-approver="<?= esc($r['approver_name'] ? ($r['status'] === 'rejected' ? 'Rejected by ' : 'Approved by ') . $r['approver_name'] : 'Awaiting decision') ?>"
-                    data-applied="<?= esc(date('d M Y', strtotime($r['created_at']))) ?>">
+                    data-applied="<?= esc(erp_date($r['created_at'])) ?>">
                     <td><?= esc($r['leave_type_name']) ?></td>
-                    <td><?= esc(date('d M Y', strtotime($r['start_date']))) ?></td>
-                    <td><?= esc(date('d M Y', strtotime($r['end_date']))) ?></td>
+                    <td><?= esc(erp_date($r['start_date'])) ?></td>
+                    <td><?= esc(erp_date($r['end_date'])) ?></td>
                     <td><?= esc($num($r['days'])) ?></td>
                     <td class="text-muted small"><?= esc(mb_strimwidth($r['reason'] ?? '—', 0, 40, '…')) ?></td>
                     <td><span class="badge bg-<?= $statusBadge[$r['status']] ?? 'secondary' ?>"><?= esc(ucfirst($r['status'])) ?></span></td>

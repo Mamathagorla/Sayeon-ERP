@@ -155,8 +155,8 @@ $iconPalette = [
                     </td>
                     <td><a href="<?= site_url('tasks?project_id=' . $p['id']) ?>" class="text-decoration-none"><?= (int) $p['task_count'] ?></a></td>
                     <td><span class="badge bg-<?= $meta['badge'] ?>"><?= esc($meta['label']) ?></span></td>
-                    <td class="text-muted small"><?= $p['start_date'] ? esc(date('d/m/Y', strtotime($p['start_date']))) : '—' ?></td>
-                    <td class="text-muted small"><?= $p['end_date'] ? esc(date('d/m/Y', strtotime($p['end_date']))) : '—' ?></td>
+                    <td class="text-muted small"><?= $p['start_date'] ? esc(erp_date($p['start_date'])) : '—' ?></td>
+                    <td class="text-muted small"><?= $p['end_date'] ? esc(erp_date($p['end_date'])) : '—' ?></td>
                     <td class="text-end">
                         <?php if (can('project.edit')): ?>
                         <a href="<?= site_url('projects/' . $p['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>

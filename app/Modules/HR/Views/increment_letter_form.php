@@ -1,9 +1,5 @@
 <?= $this->extend('layouts/main') ?>
 
-<?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/employees/' . $employee['id']) ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Profile</a>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 <div class="card col-lg-6">
     <div class="card-body">
@@ -11,7 +7,7 @@
 
         <div class="mb-3">
             <div class="text-muted small">Current Annual CTC</div>
-            <div class="fw-bold"><?= $currentCtc !== null ? '₹' . number_format($currentCtc, 2) : 'Not set up' ?></div>
+            <div class="fw-bold"><?= $currentCtc !== null ? erp_money($currentCtc) : 'Not set up' ?></div>
         </div>
 
         <form action="<?= site_url('hr/employees/' . $employee['id'] . '/increment-letters') ?>" method="post">

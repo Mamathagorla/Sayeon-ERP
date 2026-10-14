@@ -8,7 +8,6 @@
 </form>
 <a href="<?= site_url('recurring-expenses/create') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>New Recurring Expense</a>
 <?php endif; ?>
-<a href="<?= site_url('expenses') ?>" class="btn btn-light btn-sm">Back to Expenses</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -63,9 +62,9 @@
                     <td><a href="<?= site_url('recurring-expenses/' . $t['id']) ?>" class="fw-semibold text-decoration-none"><?= esc($t['title']) ?></a></td>
                     <td class="text-muted small"><?= esc($t['company_name']) ?></td>
                     <td class="text-muted small"><?= esc($t['category']) ?></td>
-                    <td class="text-end fw-semibold"><?= number_format($t['amount'], 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number($t['amount'], 2) ?></td>
                     <td class="text-muted small"><?= esc(ucfirst($t['frequency'])) ?></td>
-                    <td class="text-muted small"><?= $t['next_generation_date'] ? esc(date('d/m/Y', strtotime($t['next_generation_date']))) : '—' ?></td>
+                    <td class="text-muted small"><?= $t['next_generation_date'] ? esc(erp_date($t['next_generation_date'])) : '—' ?></td>
                     <td>
                         <?php
                             $statusColors = ['active' => 'success', 'paused' => 'warning text-dark', 'completed' => 'secondary', 'cancelled' => 'danger'];

@@ -512,7 +512,7 @@ class ReportController extends BaseController
 
         return [
             'invoices'  => $invoices,
-            'total'     => array_sum(array_column($invoices, 'amount')),
+            'total'     => $this->paymentModel->outstanding($invoices, 'invoice_id'),
             'overdue'   => count(array_filter($invoices, static fn ($i) => $i['status'] === 'overdue')),
             'companies' => $this->scopedCompanyOptions($this->companyModel->optionsList()),
         ];
@@ -528,7 +528,7 @@ class ReportController extends BaseController
 
         return [
             'bills'     => $bills,
-            'total'     => array_sum(array_column($bills, 'amount')),
+            'total'     => $this->paymentModel->outstanding($bills, 'bill_id'),
             'overdue'   => count(array_filter($bills, static fn ($b) => $b['status'] === 'overdue')),
             'companies' => $this->scopedCompanyOptions($this->companyModel->optionsList()),
         ];
@@ -569,8 +569,8 @@ class ReportController extends BaseController
             'netCashFlow'             => $cashTotals['in'] - $cashTotals['out'],
             'periodExpenses'          => $periodExpenses,
             'netProfitLoss'           => $cashTotals['in'] - $cashTotals['out'] - $periodExpenses,
-            'outstandingReceivables'  => (float) ($receivablesBuilder->selectSum('amount')->first()['amount'] ?? 0),
-            'outstandingPayables'     => (float) ($payablesBuilder->selectSum('amount')->first()['amount'] ?? 0),
+            'outstandingReceivables'  => $this->paymentModel->outstanding($receivablesBuilder->select('id, amount')->findAll(), 'invoice_id'),
+            'outstandingPayables'     => $this->paymentModel->outstanding($payablesBuilder->select('id, amount')->findAll(), 'bill_id'),
         ];
     }
 

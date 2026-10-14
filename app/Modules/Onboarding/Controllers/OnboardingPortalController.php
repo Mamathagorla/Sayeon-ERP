@@ -4,7 +4,10 @@ namespace App\Modules\Onboarding\Controllers;
 
 use App\Controllers\BaseController;
 use App\Modules\Company\Models\CompanyModel;
+use App\Modules\Document\Models\DocumentModel;
 use App\Modules\Onboarding\Models\OnboardingRecordModel;
+use App\Modules\Onboarding\Models\OnboardingTaskModel;
+use App\Modules\Onboarding\Services\CandidateFormService;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -23,11 +26,15 @@ class OnboardingPortalController extends BaseController
 {
     protected OnboardingRecordModel $recordModel;
     protected CompanyModel $companyModel;
+    protected OnboardingTaskModel $taskModel;
+    protected DocumentModel $documentModel;
 
     public function __construct()
     {
         $this->recordModel = new OnboardingRecordModel();
         $this->companyModel = new CompanyModel();
+        $this->taskModel = new OnboardingTaskModel();
+        $this->documentModel = new DocumentModel();
     }
 
     public function show(int $id, string $token)
@@ -38,23 +45,52 @@ class OnboardingPortalController extends BaseController
             return $this->invalidLink();
         }
 
+        $service = new CandidateFormService();
+        $stored  = $service->load($id);
+        $group   = $service->groupForRecord($record, $stored['profile']);
+        $old     = session('_ci_old_input')['post'] ?? null;
+        $errors  = session()->getFlashdata('form_errors') ?? [];
+
         return view('App\Modules\Onboarding\portal\show', [
-            'title'  => 'Your Onboarding — ' . $record['candidate_name'],
-            'record' => $record,
-            'token'  => $token,
+            'title'         => 'Your Onboarding — ' . $record['candidate_name'],
+            'record'        => $record,
+            'token'         => $token,
+            'documents'     => $service->documents($id),
+            'editable'      => $this->isEditable($record),
+            'reference'     => CandidateFormService::reference($record),
+            'stored'        => $stored,
+            'group'         => $group,
+            'questions'     => $service->questionsFor($group, null),
+            'values'        => $service->formValues($record, $stored, is_array($old) ? $old : null),
+            'errors'        => is_array($errors) ? $errors : [],
+            'startStep'     => (int) session()->getFlashdata('form_step'),
+            'sections'      => CandidateFormService::SECTIONS,
+            'types'         => CandidateFormService::TYPES,
+            'documentTypes' => CandidateFormService::DOCUMENT_TYPES,
         ]);
     }
 
     /**
-     * STEP 3 — candidate verifies/updates their own details. Only the
-     * phone number is actually editable in place (the one candidate_*
-     * field HR would reasonably expect to change); everything else HR
-     * entered stays as HR entered it. Re-submittable after HR asks for
-     * a correction (verification_status = 'correction_needed'), but not
-     * once already 'submitted' or 'verified' — the candidate can't just
-     * keep resubmitting over HR's own review.
+     * Final submission of the candidate form (STEP 3). Same route and
+     * status transition as before (link_sent -> details_submitted,
+     * verification_status 'submitted'), but with the full structured form
+     * validated server-side. Re-submittable only after HR asked for a
+     * correction (link_sent again); once submitted, a repeat POST is
+     * refused - the record row is locked while the check and the write
+     * happen, so a double click / second tab cannot submit twice.
      */
     public function submitVerification(int $id, string $token)
+    {
+        return $this->saveForm($id, $token, true);
+    }
+
+    /** Saves progress without submitting - same link, same validation of what was typed, no "required" checks. */
+    public function saveDraft(int $id, string $token)
+    {
+        return $this->saveForm($id, $token, false);
+    }
+
+    private function saveForm(int $id, string $token, bool $submit)
     {
         $record = $this->record($id, $token);
 
@@ -62,25 +98,155 @@ class OnboardingPortalController extends BaseController
             return $this->invalidLink();
         }
 
-        if (! in_array($record['verification_status'], [null, 'pending', 'correction_needed'], true)) {
-            return redirect()->to("/onboarding/portal/{$id}/{$token}")->with('error', 'This has already been submitted for review.');
+        $back = "/onboarding/portal/{$id}/{$token}";
+
+        if (! $this->isEditable($record)) {
+            return redirect()->to($back)->with('error', 'This has already been submitted for review.');
         }
 
-        $phone = trim((string) $this->request->getPost('candidate_phone'));
-        if ($phone !== '' && ! preg_match('/^[0-9]{10}$/', $phone)) {
-            return redirect()->to("/onboarding/portal/{$id}/{$token}")->with('error', 'Phone number must be exactly 10 digits.');
+        $service = new CandidateFormService();
+        $group   = $service->groupForRecord($record, $service->profile($id));
+        $result  = $service->extract((array) $this->request->getPost(), $record, $group, $submit, $service->hasResume($id));
+        $step    = (int) $this->request->getPost('current_step');
+
+        if ($result['errors'] !== []) {
+            return redirect()->to($back)->withInput()
+                ->with('form_errors', $result['errors'])
+                ->with('form_step', $step)
+                ->with('error', $submit
+                    ? 'Please fix the highlighted items and submit again. Nothing has been submitted yet.'
+                    : 'Some entries need attention before your progress can be saved.');
         }
 
-        $this->recordModel->update($id, [
-            'candidate_phone'            => $phone !== '' ? $phone : $record['candidate_phone'],
-            'verification_status'        => 'submitted',
-            'verification_submitted_at'  => date('Y-m-d H:i:s'),
-            'verification_notes'         => $this->request->getPost('notes') ?: null,
+        $outcome = $service->persist($id, $group, $result['clean'], $submit);
+
+        if ($outcome === CandidateFormService::SAVE_LOCKED) {
+            return redirect()->to($back)->with('error', 'This has already been submitted for review.');
+        }
+        if ($outcome !== CandidateFormService::SAVE_OK) {
+            return redirect()->to($back)->withInput()->with('form_step', $step)->with('error', 'We could not save your details. Please try again.');
+        }
+
+        if ($submit) {
+            $this->logActivity('onboarding', 'update', $id, 'Candidate submitted verification details for review');
+
+            return redirect()->to($back)->with('success', 'Thanks — your information has been submitted for HR review.');
+        }
+
+        return redirect()->to($back)->with('form_step', $step)->with('success', 'Progress saved. You can return to this link any time before it expires to continue.');
+    }
+
+    /**
+     * Resume / supporting document upload. Type, size and content are
+     * checked on the server (CandidateFormService::uploadError()); the file
+     * goes through the shared fileStorage service into a per-record folder
+     * that only HR / Super Admin can download from (see FileController).
+     * Answers JSON when called by the form's script, a redirect otherwise.
+     */
+    public function uploadDocument(int $id, string $token)
+    {
+        $record = $this->record($id, $token);
+        if ($record === null) {
+            return $this->wantsJson() ? $this->jsonError('This link is no longer valid.', 403) : $this->invalidLink();
+        }
+        if (! $this->isEditable($record)) {
+            return $this->documentResult($id, $token, false, 'Documents can no longer be added at this stage.');
+        }
+
+        $service = new CandidateFormService();
+        $type    = trim((string) $this->request->getPost('document_type'));
+        $file    = $this->request->getFile('candidate_document');
+
+        if (count($service->documents($id)) >= CandidateFormService::MAX_DOCUMENTS) {
+            return $this->documentResult($id, $token, false, 'You have reached the limit of ' . CandidateFormService::MAX_DOCUMENTS . ' documents. Remove one to add another.');
+        }
+        if (($error = $service->uploadError($file, $type)) !== null) {
+            return $this->documentResult($id, $token, false, $error);
+        }
+
+        $storage = service('fileStorage');
+        $path    = $storage->store($file, CandidateFormService::STORAGE_FOLDER . '/' . $id);
+
+        // A candidate has one resume: uploading a new one replaces the old.
+        $replaced = [];
+        if ($type === 'Resume') {
+            $replaced = $this->documentModel->where(['onboarding_record_id' => $id, 'document_type' => 'Resume'])->findAll();
+        }
+
+        $this->documentModel->insert([
+            'company_id'           => $record['company_id'],
+            'category'             => 'hr',
+            'document_type'        => $type,
+            'title'                => $record['candidate_name'] . ' - ' . $type,
+            'onboarding_record_id' => $id,
+            'file_path'            => $path,
+            'original_name'        => mb_substr(basename(str_replace('\\', '/', $file->getClientName())), 0, 190),
+            'file_size'            => $file->getSize(),
+            'uploaded_by'          => null,
         ]);
 
-        $this->logActivity('onboarding', 'update', $id, 'Candidate submitted verification details for review');
+        foreach ($replaced as $old) {
+            $storage->delete($old['file_path']);
+            $this->documentModel->delete($old['id']);
+        }
+        $this->logActivity('onboarding', 'update', $id, 'Candidate uploaded ' . $type . ' document');
 
-        return redirect()->to("/onboarding/portal/{$id}/{$token}")->with('success', 'Thanks — your information has been submitted for HR review.');
+        return $this->documentResult($id, $token, true, $type === 'Resume' ? 'Resume uploaded.' : 'Document uploaded securely.');
+    }
+
+    /** A candidate may remove only what they uploaded themselves, and only while the form is still editable. */
+    public function deleteDocument(int $id, string $token, int $documentId)
+    {
+        $record = $this->record($id, $token);
+        if ($record === null) {
+            return $this->wantsJson() ? $this->jsonError('This link is no longer valid.', 403) : $this->invalidLink();
+        }
+        if (! $this->isEditable($record)) {
+            return $this->documentResult($id, $token, false, 'Documents can no longer be changed at this stage.');
+        }
+
+        $document = $this->documentModel->where('id', $documentId)->where('onboarding_record_id', $id)->where('uploaded_by', null)->first();
+        if ($document === null) {
+            return $this->documentResult($id, $token, false, 'That document could not be found.');
+        }
+
+        service('fileStorage')->delete($document['file_path']);
+        $this->documentModel->delete($documentId);
+        $this->logActivity('onboarding', 'update', $id, 'Candidate removed a ' . ($document['document_type'] ?: 'document'));
+
+        return $this->documentResult($id, $token, true, 'Document removed.');
+    }
+
+    /** The form is open to the candidate only while the link is live and HR has not got it under review. */
+    private function isEditable(array $record): bool
+    {
+        return $record['status'] === 'link_sent' && in_array($record['verification_status'], [null, 'pending', 'correction_needed'], true);
+    }
+
+    private function wantsJson(): bool
+    {
+        return $this->request->isAJAX();
+    }
+
+    private function jsonError(string $message, int $status = 422)
+    {
+        return $this->response->setStatusCode($status)->setJSON(['ok' => false, 'message' => $message, 'csrf' => csrf_hash()]);
+    }
+
+    private function documentResult(int $id, string $token, bool $ok, string $message)
+    {
+        if ($this->wantsJson()) {
+            $documents = array_map(static fn (array $d) => [
+                'id' => (int) $d['id'], 'type' => (string) $d['document_type'], 'name' => (string) $d['original_name'],
+                'size' => (int) $d['file_size'],
+            ], (new CandidateFormService())->documents($id));
+
+            return $this->response->setStatusCode($ok ? 200 : 422)->setJSON([
+                'ok' => $ok, 'message' => $message, 'documents' => $documents, 'csrf' => csrf_hash(),
+            ]);
+        }
+
+        return redirect()->to("/onboarding/portal/{$id}/{$token}")->with($ok ? 'success' : 'error', $message);
     }
 
     /**
@@ -105,7 +271,7 @@ class OnboardingPortalController extends BaseController
         // timestamp alone (HR advancing the pipeline stage) isn't
         // enough; the offer only becomes reachable through the portal
         // once HR has signed off, same rule enforced in portal/show.php.
-        if ($record['offer_sent_at'] === null || $record['verification_status'] !== 'verified' || $record['offer_response'] !== null) {
+        if ($record['status'] !== 'offer_sent' || $record['offer_sent_at'] === null || $record['verification_status'] !== 'verified' || $record['offer_response'] !== null) {
             return redirect()->to("/onboarding/portal/{$id}/{$token}")->with('error', 'There is no pending offer to respond to.');
         }
 
@@ -128,6 +294,9 @@ class OnboardingPortalController extends BaseController
         }
 
         $this->recordModel->update($id, $data);
+        if ($response === 'accepted') {
+            $this->taskModel->seedDefaultTasks($id);
+        }
         $this->logActivity('onboarding', 'update', $id, 'Candidate ' . $response . ' the offer');
 
         $message = $response === 'accepted'
@@ -152,6 +321,10 @@ class OnboardingPortalController extends BaseController
             return $this->invalidLink();
         }
 
+        if (($templated = $this->templatedDocument('offer_letter', $id, true)) !== null) {
+            return $templated;
+        }
+
         return view('App\Modules\Onboarding\offer_letter', [
             'title'     => 'Offer Letter — ' . $record['candidate_name'],
             'record'    => $record,
@@ -169,6 +342,10 @@ class OnboardingPortalController extends BaseController
             return $this->invalidLink();
         }
 
+        if (($templated = $this->templatedDocument('offer_letter', $id, false)) !== null) {
+            return $templated;
+        }
+
         $options = new Options();
         $options->set('isRemoteEnabled', false);
 
@@ -184,6 +361,32 @@ class OnboardingPortalController extends BaseController
             ->setContentType('application/pdf')
             ->setHeader('Content-Disposition', 'attachment; filename="offer-letter-' . url_title($record['candidate_name'], '-', true) . '.pdf"')
             ->setBody($dompdf->output());
+    }
+
+    /**
+     * The joining letter HR sent after the offer was accepted. Only once HR
+     * has actually sent it (joining_letter_sent_at) and only for a live
+     * record - the same template-only document HR sees, reached by token.
+     */
+    public function joiningLetter(int $id, string $token)
+    {
+        return $this->serveJoiningLetter($id, $token, true);
+    }
+
+    public function joiningLetterPdf(int $id, string $token)
+    {
+        return $this->serveJoiningLetter($id, $token, false);
+    }
+
+    private function serveJoiningLetter(int $id, string $token, bool $inline)
+    {
+        $record = $this->record($id, $token);
+
+        if ($record === null || $record['joining_letter_sent_at'] === null || in_array($record['status'], ['withdrawn', 'rejected'], true)) {
+            return $this->invalidLink();
+        }
+
+        return $this->templatedDocument('joining_letter', $id, $inline) ?? $this->invalidLink();
     }
 
     /**

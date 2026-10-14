@@ -145,6 +145,7 @@ class PurchaseOrderController extends BaseController
             'navActive'  => 'purchase-orders',
             'order'      => $order,
             'items'      => $this->itemModel->forOrder($id),
+            'bills'      => $this->poModel->linkedBills($id),
             'canApprove' => can('purchase_order.approve') && (int) $order['requested_by'] !== (int) $this->currentUserId(),
             'canEdit'    => can('purchase_order.edit'),
             'fulfillmentStatuses' => PurchaseOrderModel::FULFILLMENT_STATUSES,
@@ -227,6 +228,12 @@ class PurchaseOrderController extends BaseController
         if ($order !== null) {
             if ($this->outOfScope(self::COMPANY_SCOPED_ROLES, $order['company_id'])) {
                 return redirect()->to('/purchase-orders')->with('error', 'Purchase order not found.');
+            }
+
+            // An order that has been received, paid or billed is part of the procurement/accounting record.
+            $billed = db_connect()->table('bills')->where('purchase_order_id', $id)->countAllResults() > 0;
+            if ($order['approval_status'] === 'approved' && ($billed || ($order['fulfillment_status'] ?? 'ordered') !== 'ordered' || $order['payment_status'] !== 'pending')) {
+                return redirect()->to('/purchase-orders/' . $id)->with('error', 'This purchase order has progressed (goods in transit/received, bills or payments) and cannot be deleted.');
             }
 
             $this->poModel->delete($id);
@@ -312,8 +319,16 @@ class PurchaseOrderController extends BaseController
         $fulfillment = $this->request->getPost('fulfillment_status');
         $payment     = $this->request->getPost('payment_status');
 
+        // Once a bill is linked, Accounting drives the payment status - it cannot be flagged by hand any more.
+        if ($this->poModel->linkedBills($id) !== []) {
+            $payment = null;
+        }
+
         $data = [];
-        if (in_array($fulfillment, PurchaseOrderModel::FULFILLMENT_STATUSES, true)) {
+        // Fulfillment only moves forward (ordered -> in transit -> received); a received order is not taken back.
+        $order_ = array_search($order['fulfillment_status'] ?? 'ordered', PurchaseOrderModel::FULFILLMENT_STATUSES, true);
+        $wanted = array_search($fulfillment, PurchaseOrderModel::FULFILLMENT_STATUSES, true);
+        if ($wanted !== false && $wanted >= (int) $order_) {
             $data['fulfillment_status'] = $fulfillment;
         }
         if (in_array($payment, PurchaseOrderModel::PAYMENT_STATUSES, true)) {

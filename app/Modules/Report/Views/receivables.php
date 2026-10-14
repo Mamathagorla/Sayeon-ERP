@@ -25,7 +25,7 @@
 
 <div class="row g-3 mb-3">
     <div class="col-md-6">
-        <div class="card text-center"><div class="card-body"><div class="fs-3 fw-bold"><?= number_format($total, 2) ?></div><div class="text-muted small">Total Outstanding</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-3 fw-bold"><?= erp_number($total, 2) ?></div><div class="text-muted small">Total Outstanding</div></div></div>
     </div>
     <div class="col-md-6">
         <div class="card text-center"><div class="card-body"><div class="fs-3 fw-bold text-danger"><?= $overdue ?></div><div class="text-muted small">Overdue Invoices</div></div></div>
@@ -45,8 +45,8 @@
                     <td><a href="<?= site_url('accounting/invoices/' . $i['id']) ?>"><?= esc($i['invoice_number']) ?></a></td>
                     <td><?= esc($i['company_name']) ?></td>
                     <td><?= esc($i['customer_name']) ?></td>
-                    <td class="text-end"><?= number_format($i['amount'], 2) ?></td>
-                    <td><?= $i['due_date'] ? esc(date('d/m/Y', strtotime($i['due_date']))) : '—' ?></td>
+                    <td class="text-end"><?= erp_number($i['amount'], 2) ?></td>
+                    <td><?= $i['due_date'] ? esc(erp_date($i['due_date'])) : '—' ?></td>
                     <td><?= esc(ucwords(str_replace('_', ' ', $i['status']))) ?></td>
                 </tr>
             <?php endforeach; ?>

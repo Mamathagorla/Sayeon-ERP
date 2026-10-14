@@ -22,6 +22,7 @@ $statusColor = ['active' => 'success', 'on_leave' => 'warning', 'resigned' => 's
     .sy-emp-photo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; margin: 0 auto 14px; display: block; }
     .sy-emp-photo.initial { display: flex; align-items: center; justify-content: center; font-size: 1.9rem; }
     .sy-emp-name { font-size: 1.02rem; font-weight: 700; color: var(--sy-ink) !important; text-decoration: none; }
+    .sy-emp-id { font-size: .76rem; font-weight: 600; letter-spacing: .06em; color: var(--sy-muted); margin: 3px 0 0; font-variant-numeric: tabular-nums; }
     .sy-emp-role { font-size: .88rem; color: var(--sy-muted); margin: 2px 0 10px; }
     .sy-emp-dept { display: inline-block; padding: 3px 12px; border-radius: 6px; font-size: .78rem; font-weight: 600; background: var(--sy-accent-warm-soft); color: var(--sy-accent-warm-ink); }
     .sy-emp-contact { border-top: 1px solid var(--sy-border-soft); margin-top: 16px; padding-top: 14px; font-size: .82rem; color: var(--sy-muted); }
@@ -81,6 +82,7 @@ $statusColor = ['active' => 'success', 'on_leave' => 'warning', 'resigned' => 's
                 <span class="sy-avatar sy-emp-photo initial"><?= esc(mb_strtoupper(mb_substr($e['user_name'], 0, 1))) ?></span>
             <?php endif; ?>
             <a href="<?= site_url('hr/employees/' . $e['id']) ?>" class="sy-emp-name d-block"><?= esc($e['user_name']) ?></a>
+            <div class="sy-emp-id"><?= esc($e['employee_code']) ?></div>
             <div class="sy-emp-role"><?= esc($e['designation'] ?? '—') ?></div>
             <?php if (! empty($e['department_name'])): ?><span class="sy-emp-dept"><?= esc($e['department_name']) ?></span><?php endif; ?>
             <?php if ($e['status'] !== 'active'): ?>
@@ -147,11 +149,15 @@ $statusColor = ['active' => 'success', 'on_leave' => 'warning', 'resigned' => 's
     // Live search across name / role / department / email / code.
     var search = document.getElementById('empSearch');
     var none = document.getElementById('empNoMatches');
+    search.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); } });
     search.addEventListener('input', function () {
-        var q = this.value.trim().toLowerCase();
+        // Results update on every keystroke; each typed word just has to appear somewhere
+        // (name, role, department, email or code), so a few characters are enough.
+        var terms = this.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
         var visible = 0;
         document.querySelectorAll('.emp-item').forEach(function (el) {
-            var match = el.dataset.search.indexOf(q) !== -1;
+            var hay = el.dataset.search;
+            var match = terms.every(function (t) { return hay.indexOf(t) !== -1; });
             el.classList.toggle('d-none', ! match);
             if (match && el.closest('#empGrid')) { visible++; }
         });

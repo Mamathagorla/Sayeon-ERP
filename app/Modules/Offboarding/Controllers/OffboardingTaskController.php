@@ -79,9 +79,76 @@ class OffboardingTaskController extends BaseController
             ]);
         }
 
+        $this->syncStageWithChecklist($recordId);
+
         $this->logActivity('offboarding', 'update', $recordId, 'Updated checklist item "' . $task['title'] . '" for ' . $record['employee_name']);
 
         return redirect()->to('/hr/offboarding/' . $recordId)->with('success', 'Checklist item updated.');
+    }
+
+    /**
+     * Moves the record's stage forward as its checklist gets finished: the
+     * stage becomes the first one whose tasks aren't all done. Forward
+     * only, never auto-completes the exit (HR still sets "Exit Completed"
+     * manually), and leaves rescinded/completed records alone. Stages
+     * with no tasks of their own pass automatically.
+     */
+    private function syncStageWithChecklist(int $recordId): void
+    {
+        $record = $this->recordModel->find($recordId);
+        $order  = OffboardingRecordModel::STATUSES;
+        $currentIdx = array_search($record['status'] ?? '', $order, true);
+
+        if ($currentIdx === false || $record['status'] === 'exit_completed') {
+            return;
+        }
+
+        $stageTaskType = [
+            'manager_review' => 'manager_review', 'hr_approval' => 'hr_approval',
+            'handover' => 'handover', 'department_clearances' => 'department_clearance',
+            'asset_return' => 'asset_return', 'access_revocation' => 'access_revocation',
+            'final_settlement' => 'final_settlement', 'exit_interview' => 'exit_interview',
+            'final_documents' => 'final_documents',
+        ];
+
+        $open = [];
+        foreach ($this->taskModel->where('offboarding_record_id', $recordId)->findAll() as $t) {
+            if (! in_array($t['status'], ['completed', 'skipped'], true)) {
+                $open[$t['task_type']] = true;
+            }
+        }
+
+        $targetIdx = array_search('final_documents', $order, true);
+        foreach ($order as $i => $stage) {
+            if ($stage === 'exit_completed') {
+                break;
+            }
+            if (isset($stageTaskType[$stage]) && isset($open[$stageTaskType[$stage]])) {
+                $targetIdx = $i;
+                break;
+            }
+        }
+
+        if ($targetIdx <= $currentIdx) {
+            return;
+        }
+
+        $target = $order[$targetIdx];
+        $data   = ['status' => $target];
+        $now    = date('Y-m-d H:i:s');
+
+        // Same stamps OffboardingController::updateStatus() applies when
+        // a stage is advanced by hand.
+        if ($targetIdx > array_search('manager_review', $order, true) && $record['manager_reviewed_at'] === null) {
+            $data['manager_reviewed_by'] = $this->currentUserId();
+            $data['manager_reviewed_at'] = $now;
+        }
+        if ($targetIdx > array_search('hr_approval', $order, true) && $record['hr_approved_at'] === null) {
+            $data['hr_approved_by'] = $this->currentUserId();
+            $data['hr_approved_at'] = $now;
+        }
+
+        $this->recordModel->update($recordId, $data);
     }
 
     private function canActOn(array $task, array $record): bool

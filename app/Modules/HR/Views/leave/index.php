@@ -28,7 +28,6 @@ $totalQuota  = array_sum(array_column($balances, 'quota'));
     .sy-leave-leg .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 </style>
 
-<p class="text-muted mb-3">Manage employee leaves, approvals and leave policies.</p>
 
 <div class="row row-cols-2 row-cols-lg-4 g-3 mb-3">
     <div class="col">
@@ -62,8 +61,8 @@ $totalQuota  = array_sum(array_column($balances, 'quota'));
 </div>
 
 <div class="row g-3">
-    <div class="col-xl-9">
-        <div class="sy-card mb-3">
+    <div class="<?= $isSuperAdmin ? 'col-12' : 'col-xl-9' ?>">
+        <div class="sy-card mb-3" style="height:auto">
             <div class="sy-card-body">
                 <form method="get" class="row g-2 align-items-end filter-form">
                     <div class="col-6 col-md-3">
@@ -97,15 +96,11 @@ $totalQuota  = array_sum(array_column($balances, 'quota'));
                         <label class="form-label small mb-1">Search</label>
                         <input type="text" name="q" class="form-control form-control-sm" placeholder="Search employees…" value="<?= esc($filters['q'] ?? '') ?>">
                     </div>
-                    <div class="col-6 col-md-1 d-flex gap-2">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">Go</button>
-                        <a href="<?= site_url('hr/leave') ?>" class="btn btn-light btn-sm">Reset</a>
-                    </div>
                 </form>
             </div>
         </div>
 
-        <div class="sy-card">
+        <div class="sy-card" style="height:auto">
             <div class="sy-card-header"><strong><?= $isSuperAdmin ? 'All Leave Requests' : 'Leave Requests' ?></strong> <span class="text-muted small"><?= count($requests) ?> total</span></div>
             <div class="sy-card-body p-0">
                 <?php if (empty($requests)): ?>
@@ -129,8 +124,8 @@ $totalQuota  = array_sum(array_column($balances, 'quota'));
                             </td>
                             <td class="text-muted small"><?= $r['employee_code'] ? esc($r['employee_code']) : '—' ?></td>
                             <td><?= esc($r['leave_type_name']) ?></td>
-                            <td class="text-muted small"><?= esc(date('d/m/Y', strtotime($r['start_date']))) ?></td>
-                            <td class="text-muted small"><?= esc(date('d/m/Y', strtotime($r['end_date']))) ?></td>
+                            <td class="text-muted small"><?= esc(erp_date($r['start_date'])) ?></td>
+                            <td class="text-muted small"><?= esc(erp_date($r['end_date'])) ?></td>
                             <td><?= esc($r['days']) ?></td>
                             <td><span class="badge bg-<?= $statusBadge[$r['status']] ?>"><?= esc($statusLabel($r['status'])) ?></span></td>
                             <td class="text-muted small"><?= $r['approver_name'] ? esc($r['approver_name']) : '—' ?></td>
@@ -161,8 +156,8 @@ $totalQuota  = array_sum(array_column($balances, 'quota'));
         </div>
     </div>
 
+    <?php if (! $isSuperAdmin): ?>
     <div class="col-xl-3">
-        <?php if (! $isSuperAdmin): ?>
         <div class="sy-card mb-3">
             <div class="sy-card-header"><strong>Leave Balance</strong></div>
             <div class="sy-card-body">
@@ -191,20 +186,7 @@ $totalQuota  = array_sum(array_column($balances, 'quota'));
                 <?php endif; ?>
             </div>
         </div>
-        <?php endif; ?>
-
-        <div class="sy-card">
-            <div class="sy-card-header"><strong>Quick Actions</strong></div>
-            <div class="sy-card-body d-flex flex-column gap-2">
-                <?php if (can('leave.create') && session('roleSlug') !== 'super_admin'): ?>
-                    <a href="<?= site_url('hr/leave/create') ?>" class="btn btn-outline-secondary btn-sm text-start"><i class="fas fa-plus me-2"></i>Apply for Leave</a>
-                <?php endif; ?>
-                <a href="<?= site_url('calendar') ?>" class="btn btn-outline-secondary btn-sm text-start"><i class="fas fa-calendar-days me-2"></i>View Leave Calendar</a>
-                <?php if (can('leave.edit')): ?>
-                    <a href="<?= site_url('hr/leave/types') ?>" class="btn btn-outline-secondary btn-sm text-start"><i class="fas fa-file-shield me-2"></i>Leave Policy</a>
-                <?php endif; ?>
-            </div>
-        </div>
     </div>
+    <?php endif; ?>
 </div>
 <?= $this->endSection() ?>

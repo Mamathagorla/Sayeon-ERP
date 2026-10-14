@@ -108,4 +108,21 @@ class MeetingParticipantModel extends Model
     {
         return $participant['user_name'] ?? $participant['external_name'] ?? $participant['external_email'] ?? 'Unknown';
     }
+
+    /**
+     * The "who may work on this meeting" rule MeetingController::show() applies: an Employee only reaches a
+     * meeting they organised or are a participant of; every other role is limited by company scope only.
+     */
+    public function mayAccess(array $meeting, ?int $userId, ?string $roleSlug): bool
+    {
+        if ($roleSlug !== 'employee') {
+            return true;
+        }
+
+        if ((int) ($meeting['created_by'] ?? 0) === (int) $userId) {
+            return true;
+        }
+
+        return $this->where('meeting_id', (int) $meeting['id'])->where('user_id', (int) $userId)->countAllResults() > 0;
+    }
 }

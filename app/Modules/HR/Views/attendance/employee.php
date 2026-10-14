@@ -6,13 +6,12 @@ $label       = static fn (string $v): string => ucwords(str_replace('_', ' ', $v
 
 // Same export-CSV pattern as the Employees list page.
 $exportRows = array_map(static fn (array $r) => [
-    date('d/m/Y', strtotime($r['date'])), $r['check_in'] ? date('g:i A', strtotime($r['check_in'])) : '',
-    $r['check_out'] ? date('g:i A', strtotime($r['check_out'])) : '', ucwords(str_replace('_', ' ', $r['status'])), $r['notes'] ?? '',
+    erp_date($r['date']), $r['check_in'] ? erp_time($r['check_in']) : '',
+    $r['check_out'] ? erp_time($r['check_out']) : '', ucwords(str_replace('_', ' ', $r['status'])), $r['notes'] ?? '',
 ], $records);
 ?>
 
 <?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/attendance') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Attendance</a>
 <button type="button" class="btn btn-outline-secondary btn-sm" id="attExport"><i class="fas fa-download me-1"></i>Export Report</button>
 <?= $this->endSection() ?>
 
@@ -27,8 +26,6 @@ $exportRows = array_map(static fn (array $r) => [
     .sy-att-summary .v { font-size: 1.15rem; font-weight: 700; color: var(--sy-ink); }
     .sy-att-summary .k { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--sy-muted); margin-top: 2px; }
 </style>
-
-<div class="sy-pf-crumb"><a href="<?= site_url('hr/attendance') ?>"><i class="fas fa-arrow-left me-1"></i>Back to Attendance</a></div>
 
 <!-- Employee header -->
 <div class="sy-card sy-pf-head mb-3" style="height:auto">
@@ -114,15 +111,15 @@ $exportRows = array_map(static fn (array $r) => [
                     $hours = $mins !== null ? intdiv($mins, 60) . 'h ' . ($mins % 60) . 'm' : '—';
                 ?>
                 <tr class="sy-att-row"
-                    data-date="<?= esc(date('D, d M Y', strtotime($r['date']))) ?>"
-                    data-checkin="<?= $r['check_in'] ? esc(date('g:i A', strtotime($r['check_in']))) : '—' ?>"
-                    data-checkout="<?= $r['check_out'] ? esc(date('g:i A', strtotime($r['check_out']))) : '—' ?>"
+                    data-date="<?= esc(date('D', strtotime($r['date'])) . ", " . erp_date($r['date'])) ?>"
+                    data-checkin="<?= $r['check_in'] ? esc(erp_time($r['check_in'])) : '—' ?>"
+                    data-checkout="<?= $r['check_out'] ? esc(erp_time($r['check_out'])) : '—' ?>"
                     data-hours="<?= esc($hours) ?>"
                     data-status="<?= esc($label($r['status'])) ?>"
                     data-remarks="<?= esc($r['notes'] ?: 'No remarks.') ?>">
-                    <td><?= esc(date('d M Y', strtotime($r['date']))) ?></td>
-                    <td><?= $r['check_in'] ? esc(date('g:i A', strtotime($r['check_in']))) : '—' ?></td>
-                    <td><?= $r['check_out'] ? esc(date('g:i A', strtotime($r['check_out']))) : '—' ?></td>
+                    <td><?= esc(erp_date($r['date'])) ?></td>
+                    <td><?= $r['check_in'] ? esc(erp_time($r['check_in'])) : '—' ?></td>
+                    <td><?= $r['check_out'] ? esc(erp_time($r['check_out'])) : '—' ?></td>
                     <td><?= esc($hours) ?></td>
                     <td><span class="badge bg-<?= $statusBadge[$r['status']] ?? 'secondary' ?>"><?= esc($label($r['status'])) ?></span></td>
                     <td class="text-muted small"><?= esc(mb_strimwidth($r['notes'] ?? '—', 0, 40, '…')) ?></td>

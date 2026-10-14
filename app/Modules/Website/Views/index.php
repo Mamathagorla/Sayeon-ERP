@@ -49,7 +49,7 @@
                     <td><?= esc($w['company_name']) ?></td>
                     <td><?= esc($w['hosting_provider'] ?? '—') ?></td>
                     <td><?= esc($w['ssl_expiry'] ?? '—') ?></td>
-                    <td><?= $w['renewal_date'] ? esc(date('d/m/Y', strtotime($w['renewal_date']))) : '—' ?></td>
+                    <td><?= $w['renewal_date'] ? esc(erp_date($w['renewal_date'])) : '—' ?></td>
                     <td><span class="badge bg-<?= $w['status'] === 'active' ? 'success' : ($w['status'] === 'expired' ? 'danger' : 'secondary') ?>"><?= esc(ucfirst($w['status'])) ?></span></td>
                 </tr>
             <?php endforeach; ?>

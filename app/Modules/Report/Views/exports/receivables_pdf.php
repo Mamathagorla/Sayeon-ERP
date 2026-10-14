@@ -19,7 +19,7 @@
     <div class="meta">Generated <?= esc($generatedAt) ?> · Sayeon · Sanvima Solutions Group</div>
 
     <div class="summary">
-        <div><strong>Total Outstanding:</strong> <?= number_format($total, 2) ?></div>
+        <div><strong>Total Outstanding:</strong> <?= erp_number($total, 2) ?></div>
         <div><strong>Overdue:</strong> <?= $overdue ?></div>
     </div>
 
@@ -31,8 +31,8 @@
                 <td><?= esc($i['invoice_number']) ?></td>
                 <td><?= esc($i['company_name']) ?></td>
                 <td><?= esc($i['customer_name']) ?></td>
-                <td><?= number_format($i['amount'], 2) ?></td>
-                <td><?= $i['due_date'] ? esc(date('d/m/Y', strtotime($i['due_date']))) : '-' ?></td>
+                <td><?= erp_number($i['amount'], 2) ?></td>
+                <td><?= $i['due_date'] ? esc(erp_date($i['due_date'])) : '-' ?></td>
                 <td><?= esc(ucwords(str_replace('_', ' ', $i['status']))) ?></td>
             </tr>
         <?php endforeach; ?>

@@ -4,7 +4,15 @@
 <?php if ($canEdit && $order['approval_status'] === 'pending'): ?>
 <a href="<?= site_url('purchase-orders/' . $order['id'] . '/edit') ?>" class="btn btn-light btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
 <?php endif; ?>
-<a href="<?= site_url('purchase-orders') ?>" class="btn btn-light btn-sm">Back to list</a>
+<?php $poDocs = \App\Modules\Document\Services\DocumentAvailability::shared()->items('purchase', (int) $order['company_id'], ['purchase_order' => (int) $order['id']]); ?>
+<?php if ($poDocs): ?>
+<div class="dropdown d-inline-block">
+    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-file-pdf me-1"></i>Documents</button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <?= view('App\\Modules\\Document\\partials/doc_workflow_menu', ['workflow' => 'purchase', 'companyId' => (int) $order['company_id'], 'context' => ['purchase_order' => (int) $order['id']], 'showEmpty' => false]) ?>
+    </ul>
+</div>
+<?php endif; ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -22,13 +30,13 @@
 
         <div class="row small">
             <div class="col-md-3 mb-2"><span class="text-muted">Requestor</span><br><?= esc($order['requester_name'] ?? '—') ?></div>
-            <div class="col-md-3 mb-2"><span class="text-muted">Order Date</span><br><?= esc(date('d/m/Y', strtotime($order['order_date']))) ?></div>
-            <div class="col-md-3 mb-2"><span class="text-muted">Expected</span><br><?= $order['expected_date'] ? esc(date('d/m/Y', strtotime($order['expected_date']))) : '—' ?></div>
+            <div class="col-md-3 mb-2"><span class="text-muted">Order Date</span><br><?= esc(erp_date($order['order_date'])) ?></div>
+            <div class="col-md-3 mb-2"><span class="text-muted">Expected</span><br><?= $order['expected_date'] ? esc(erp_date($order['expected_date'])) : '—' ?></div>
             <div class="col-md-3 mb-2"><span class="text-muted">Items</span><br><?= esc($order['items_count']) ?></div>
-            <div class="col-md-3 mb-2"><span class="text-muted">Total Amount</span><br><?= number_format((float) $order['amount'], 2) ?></div>
+            <div class="col-md-3 mb-2"><span class="text-muted">Total Amount</span><br><?= erp_number((float) $order['amount'], 2) ?></div>
             <?php if ($order['approval_status'] !== 'pending'): ?>
             <div class="col-md-3 mb-2"><span class="text-muted">Decided By</span><br><?= esc($order['approver_name'] ?? '—') ?></div>
-            <div class="col-md-3 mb-2"><span class="text-muted">Decided On</span><br><?= $order['approved_at'] ? esc(date('d/m/Y, g:i A', strtotime($order['approved_at']))) : '—' ?></div>
+            <div class="col-md-3 mb-2"><span class="text-muted">Decided On</span><br><?= $order['approved_at'] ? esc(erp_date($order['approved_at']) . ", " . erp_time($order['approved_at'])) : '—' ?></div>
             <?php endif; ?>
             <?php if ($order['notes']): ?>
             <div class="col-12 mb-2"><span class="text-muted">Notes</span><br><?= nl2br(esc($order['notes'])) ?></div>
@@ -48,15 +56,15 @@
                 <tr>
                     <td><?= esc($item['item_name']) ?></td>
                     <td class="text-end"><?= esc((int) $item['quantity']) ?></td>
-                    <td class="text-end"><?= number_format((float) $item['unit_price'], 2) ?></td>
-                    <td class="text-end fw-semibold"><?= number_format((float) $item['line_total'], 2) ?></td>
+                    <td class="text-end"><?= erp_number((float) $item['unit_price'], 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number((float) $item['line_total'], 2) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="3" class="text-end fw-semibold">Total</td>
-                    <td class="text-end fw-semibold"><?= number_format((float) $order['amount'], 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number((float) $order['amount'], 2) ?></td>
                 </tr>
             </tfoot>
         </table>
@@ -81,6 +89,27 @@
         <?php endif; ?>
     </div>
 </div>
+
+<?php if (! empty($bills)): ?>
+<div class="card mb-3">
+    <div class="card-header"><strong>Vendor bills</strong> <span class="text-muted small">- payment status follows these bills</span></div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Bill</th><th class="text-end">Amount</th><th class="text-end">Paid</th><th>Status</th></tr></thead>
+            <tbody>
+            <?php foreach ($bills as $b): ?>
+                <tr>
+                    <td><a href="<?= site_url('accounting/bills/' . $b['id']) ?>"><?= esc($b['bill_number']) ?></a></td>
+                    <td class="text-end"><?= erp_number($b['amount'], 2) ?></td>
+                    <td class="text-end"><?= erp_number($b['paid'], 2) ?></td>
+                    <td><?= esc(ucwords(str_replace('_', ' ', $b['status']))) ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if ($order['approval_status'] === 'approved'): ?>
 <div class="card">
@@ -107,7 +136,7 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label small mb-1">Payment Status</label>
-                <select name="payment_status" class="form-select form-select-sm">
+                <select name="payment_status" class="form-select form-select-sm" <?= ! empty($bills) ? 'disabled title="Driven by the linked vendor bills"' : '' ?>>
                     <?php foreach ($paymentStatuses as $s): ?>
                         <option value="<?= $s ?>" <?= $order['payment_status'] === $s ? 'selected' : '' ?>><?= esc(ucfirst($s)) ?></option>
                     <?php endforeach; ?>

@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Modules\Auth\Models\UserModel;
 use App\Modules\Company\Models\CompanyModel;
 use App\Modules\Department\Models\DepartmentModel;
+use App\Modules\Document\Services\DocumentTypeRegistry;
 use App\Modules\HR\Models\EmployeeProfileModel;
 
 class EmployeeController extends BaseController
@@ -63,7 +64,17 @@ class EmployeeController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only add employees to your own company.');
         }
 
+        if ($this->managerMismatch((int) $this->request->getPost('company_id'))) {
+            return redirect()->back()->withInput()->with('error', 'Choose a reporting manager from the same company.');
+        }
+
+        $photoError = $this->validatePhoto();
+        if ($photoError !== null) {
+            return redirect()->back()->withInput()->with('errors', [$photoError]);
+        }
+
         $id = $this->profileModel->insert($this->payload(true));
+        $this->savePhoto((int) $this->request->getPost('user_id'));
         $this->logActivity('employee', 'create', $id, 'Created employee profile #' . $id);
 
         return redirect()->to('/hr/employees/' . $id)->with('success', 'Employee profile created.');
@@ -281,6 +292,75 @@ class EmployeeController extends BaseController
 
             $data['documents'] = $found;
 
+            // Letters generated from the company's templates. Nothing is
+            // stored for these (they render live from the employee's saved
+            // data via TemplatedDocument), so they are listed from the same
+            // source as the Actions menu: only types this company has an
+            // ACTIVE template for, that the viewer may generate, and that
+            // the employee's own records can feed. 'issued' rows belong to a
+            // dated record (offer sent, joined, increment, payslip);
+            // 'ondemand' rows are generated fresh each time they're opened.
+            $avail     = \App\Modules\Document\Services\DocumentAvailability::shared();
+            $companyId = (int) $employee['company_id'];
+            $render    = static fn (string $type, int $rid, bool $inline): string => site_url('documents/render/' . $type . '/' . $rid . ($inline ? '?inline=1' : ''));
+            $generated = [];
+            $seen      = [];
+            $add       = static function (array $row) use (&$generated, &$seen): void {
+                $row['menu'] = ! isset($seen[$row['type']]);
+                $seen[$row['type']] = true;
+                $generated[] = $row;
+            };
+
+            if ($onboarding !== null && can('onboarding.view')) {
+                $obId = (int) $onboarding['id'];
+                $offerOut = ! empty($onboarding['offer_sent_at']) || in_array($onboarding['status'], array_merge(['offer_accepted'], \App\Modules\Onboarding\Controllers\OnboardingController::EMPLOYEE_ELIGIBLE_STATUSES), true);
+                if ($offerOut && $avail->has('offer_letter', $companyId)) {
+                    $add(['type' => 'offer_letter', 'label' => 'Offer Letter', 'icon' => 'fa-file-lines', 'kind' => 'issued',
+                        'issued' => $onboarding['offer_sent_at'] ?? null, 'status' => ! empty($onboarding['offer_sent_at']) ? 'Sent' : 'Accepted',
+                        'view' => site_url('hr/onboarding/' . $obId . '/offer-letter'), 'download' => site_url('hr/onboarding/' . $obId . '/offer-letter/pdf')]);
+                }
+                if (! empty($onboarding['joined_at']) && $avail->has('joining_letter', $companyId)) {
+                    $add(['type' => 'joining_letter', 'label' => 'Appointment / Joining Letter', 'icon' => 'fa-file-signature', 'kind' => 'issued',
+                        'issued' => $onboarding['joined_at'], 'status' => 'Issued',
+                        'view' => site_url('hr/onboarding/' . $obId . '/joining-letter'), 'download' => site_url('hr/onboarding/' . $obId . '/joining-letter/pdf')]);
+                }
+                foreach ($avail->items('onboarding', $companyId, ['onboarding_record' => $obId], ['offer_letter', 'joining_letter']) as $it) {
+                    $add(['type' => $it['type'], 'label' => $it['label'], 'icon' => 'fa-file-pdf', 'kind' => 'ondemand', 'issued' => null, 'status' => 'Ready to generate',
+                        'view' => $render($it['type'], $it['recordId'], true), 'download' => $render($it['type'], $it['recordId'], false)]);
+                }
+            }
+
+            if ($avail->has('increment_letter', $companyId) && DocumentTypeRegistry::canGenerate('increment_letter')) {
+                foreach ($data['increments'] ?? [] as $inc) {
+                    $add(['type' => 'increment_letter', 'label' => 'Increment Letter', 'icon' => 'fa-file-invoice-dollar', 'kind' => 'issued',
+                        'issued' => $inc['effective_date'], 'status' => 'Issued',
+                        'view' => site_url('hr/employees/' . $profileId . '/increment-letters/' . $inc['id']), 'download' => $render('increment_letter', (int) $inc['id'], false)]);
+                }
+            }
+
+            if (! empty($data['payslips']) && $avail->has('payslip', $companyId) && DocumentTypeRegistry::canGenerate('payslip')) {
+                $ps = $data['payslips'][0];
+                $add(['type' => 'payslip', 'label' => 'Payslip — ' . date('M Y', mktime(0, 0, 0, (int) $ps['month'], 1, (int) $ps['year'])), 'icon' => 'fa-money-check-dollar', 'kind' => 'issued',
+                    'issued' => sprintf('%04d-%02d-01', $ps['year'], $ps['month']), 'status' => ucwords(str_replace('_', ' ', (string) $ps['run_status'])),
+                    'view' => site_url('hr/payroll/payslip/' . $ps['id']), 'download' => site_url('hr/payroll/payslip/' . $ps['id'] . '/pdf')]);
+            }
+
+            $contexts = ['employee' => ['employee_profile' => $profileId, 'salary_structure' => (int) ($data['salary']['id'] ?? 0)]];
+            if ($offboarding !== null) {
+                $contexts['offboarding'] = ['offboarding_record' => (int) $offboarding['id'], 'employee_profile' => $profileId];
+            }
+            foreach ($contexts as $workflow => $ctx) {
+                foreach ($avail->items($workflow, $companyId, $ctx, ['increment_letter', 'payslip']) as $it) {
+                    if (isset($seen[$it['type']])) {
+                        continue;
+                    }
+                    $add(['type' => $it['type'], 'label' => $it['label'], 'icon' => 'fa-file-pdf', 'kind' => 'ondemand', 'issued' => null, 'status' => 'Ready to generate',
+                        'view' => $render($it['type'], $it['recordId'], true), 'download' => $render($it['type'], $it['recordId'], false)]);
+                }
+            }
+
+            $data['generatedDocs'] = $generated;
+
             $soon = date('Y-m-d', strtotime('+30 days'));
             foreach ($found as $d) {
                 if (empty($d['expiry_date']) || $d['expiry_date'] > $soon) {
@@ -291,14 +371,26 @@ class EmployeeController extends BaseController
             }
         }
 
-        $missingFields = array_keys(array_filter([
-            'date of birth'     => empty($employee['date_of_birth']),
-            'phone'             => empty($employee['user_phone']),
-            'emergency contact' => empty($employee['emergency_contact_name']) || empty($employee['emergency_contact_phone']),
-            'reporting manager' => empty($employee['reporting_manager_id']),
-        ]));
-        if ($missingFields !== []) {
-            $actions[] = ['info', 'fa-address-card', 'Profile incomplete — missing ' . implode(', ', $missingFields)];
+        // Each missing detail says WHERE it is filled in (and links straight
+        // to that field when the viewer may edit it), because the person
+        // looking at this card often doesn't know which screen holds it.
+        $editUrl   = can('employee.edit') ? site_url('hr/employees/' . $profileId . '/edit') : null;
+        $phoneUrl  = can('user.edit') ? site_url('users/' . $userId . '/edit?focus=phone') : null;
+        $fieldHelp = [];
+        if (empty($employee['date_of_birth'])) {
+            $fieldHelp[] = ['Date of birth', 'Edit Profile → Personal & Emergency Contact → Date of Birth', $editUrl ? $editUrl . '?focus=date_of_birth' : null];
+        }
+        if (empty($employee['user_phone'])) {
+            $fieldHelp[] = ['Phone', 'Saved on the login account: Users → Edit User → Phone (the employee can also add it from My Profile)', $phoneUrl];
+        }
+        if (empty($employee['emergency_contact_name']) || empty($employee['emergency_contact_phone'])) {
+            $fieldHelp[] = ['Emergency contact', 'Edit Profile → Personal & Emergency Contact → Emergency Contact Name / Phone', $editUrl ? $editUrl . '?focus=emergency_contact_name' : null];
+        }
+        if (empty($employee['reporting_manager_id'])) {
+            $fieldHelp[] = ['Reporting manager', 'Edit Profile → Employment Details → Reporting Manager', $editUrl ? $editUrl . '?focus=reporting_manager_id' : null];
+        }
+        if ($fieldHelp !== []) {
+            $actions[] = ['info', 'fa-address-card', 'Profile incomplete — missing ' . strtolower(implode(', ', array_column($fieldHelp, 0))), $fieldHelp];
         }
 
         // Recent activity: changes to this profile, their salary structure,
@@ -333,7 +425,7 @@ class EmployeeController extends BaseController
 
     public function edit(int $id)
     {
-        $employee = $this->profileModel->find($id);
+        $employee = $this->profileModel->withRelations($id);
 
         if ($employee === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $employee['company_id'] ?? null)) {
             return redirect()->to('/hr/employees')->with('error', 'Employee not found.');
@@ -367,6 +459,15 @@ class EmployeeController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only assign employees to your own company.');
         }
 
+        if ($this->managerMismatch((int) $this->request->getPost('company_id'))) {
+            return redirect()->back()->withInput()->with('error', 'Choose a reporting manager from the same company.');
+        }
+
+        $photoError = $this->validatePhoto();
+        if ($photoError !== null) {
+            return redirect()->back()->withInput()->with('errors', [$photoError]);
+        }
+
         // skipValidation: already validated above with the real id
         // interpolated directly into the unique rules (line 354-355) —
         // EmployeeProfileModel's own $validationRules still carries the
@@ -377,6 +478,10 @@ class EmployeeController extends BaseController
         // bug was confirmed live: editing an employee without changing
         // employee_code showed a success message but saved nothing.
         $this->profileModel->skipValidation(true)->update($id, $this->payload(false));
+        $this->savePhoto((int) $employee['user_id']);
+        if ($this->request->getPost('remove_photo') && ! $this->hasPhotoUpload()) {
+            $this->removePhoto((int) $employee['user_id']);
+        }
         $this->logActivity('employee', 'update', $id, 'Updated employee profile #' . $id);
 
         return redirect()->to('/hr/employees/' . $id)->with('success', 'Employee profile updated.');
@@ -416,7 +521,24 @@ class EmployeeController extends BaseController
             $nextCodeByCompany[$c['id']] = $this->profileModel->nextEmployeeCode((int) $c['id']);
         }
 
+        // Hired-but-not-yet-converted onboarding candidates, company-scoped —
+        // surfaced on the create form as links to the primary conversion
+        // path (Onboarding → Create Employee Record), since they have no
+        // employee profile yet and so aren't useful as plain "User" rows.
+        $onboardingCandidates = [];
+        if ($employee === null && can('onboarding.view')) {
+            $builder = (new \App\Modules\Onboarding\Models\OnboardingRecordModel())->filtered()
+                ->whereIn('onboarding_records.status', \App\Modules\Onboarding\Controllers\OnboardingController::EMPLOYEE_ELIGIBLE_STATUSES)
+                ->where('onboarding_records.employee_profile_id IS NULL');
+            $scope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
+            if ($scope !== null) {
+                $builder->where('onboarding_records.company_id', $scope);
+            }
+            $onboardingCandidates = $builder->findAll();
+        }
+
         return [
+            'onboardingCandidates' => $onboardingCandidates,
             'title'     => $employee ? 'Edit Employee Profile' : 'Add Employee Profile',
             'navActive' => 'hr-employees',
             'employee'  => $employee,
@@ -429,6 +551,81 @@ class EmployeeController extends BaseController
             'nextCode'  => $employee['employee_code'] ?? ($nextCodeByCompany[$companies[0]['id'] ?? 0] ?? ''),
             'nextCodeByCompany' => $nextCodeByCompany,
         ];
+    }
+
+    /** Optional photo upload: returns an error message, or null when absent/valid. */
+    private function validatePhoto(): ?string
+    {
+        $file = $this->request->getFile('photo');
+        if ($file === null || $file->getError() === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+        if (! $file->isValid()) {
+            return 'The photo could not be uploaded.';
+        }
+        if (! in_array($file->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true)) {
+            return 'Photo must be a JPG, PNG or WEBP image.';
+        }
+        if ($file->getSizeByUnit('kb') > 2048) {
+            return 'Photo must be 2 MB or smaller.';
+        }
+
+        return null;
+    }
+
+    private function hasPhotoUpload(): bool
+    {
+        $file = $this->request->getFile('photo');
+
+        return $file !== null && $file->getError() !== UPLOAD_ERR_NO_FILE;
+    }
+
+    /** Un-upload: clears the user's avatar and deletes the stored file. */
+    private function removePhoto(int $userId): void
+    {
+        $old = $this->userModel->find($userId)['avatar_path'] ?? null;
+        $this->userModel->skipValidation(true)->update($userId, ['avatar_path' => null]);
+
+        if ($old && is_file(FCPATH . $old)) {
+            @unlink(FCPATH . $old);
+        }
+    }
+
+    /**
+     * The photo is the user's avatar (users.avatar_path), the same one the
+     * header, "My Profile" and this employee's profile page already show.
+     */
+    private function savePhoto(int $userId): void
+    {
+        $file = $this->request->getFile('photo');
+        if ($userId <= 0 || $file === null || ! $file->isValid() || $file->hasMoved()) {
+            return;
+        }
+
+        $targetDir = FCPATH . 'uploads/avatars/' . $userId;
+        if (! is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
+        $old = $this->userModel->find($userId)['avatar_path'] ?? null;
+        $name = $file->getRandomName();
+        $file->move($targetDir, $name);
+        $this->userModel->skipValidation(true)->update($userId, ['avatar_path' => 'uploads/avatars/' . $userId . '/' . $name]);
+
+        if ($old && is_file(FCPATH . $old)) {
+            @unlink(FCPATH . $old);
+        }
+    }
+
+    /**
+     * A reporting manager must be an employee of the same company, as Onboarding already requires for a
+     * candidate's manager. Blank is allowed.
+     */
+    private function managerMismatch(int $companyId): bool
+    {
+        $managerId = (int) $this->request->getPost('reporting_manager_id');
+
+        return $managerId > 0 && db_connect()->table('employee_profiles')->where('user_id', $managerId)->where('company_id', $companyId)->countAllResults() === 0;
     }
 
     private function payload(bool $isNew): array

@@ -15,8 +15,8 @@
                     <?php foreach ($cycles as $c): ?>
                         <tr>
                             <td><?= esc($c['name']) ?></td>
-                            <td><?= esc(date('d/m/Y', strtotime($c['start_date']))) ?></td>
-                            <td><?= esc(date('d/m/Y', strtotime($c['end_date']))) ?></td>
+                            <td><?= esc(erp_date($c['start_date'])) ?></td>
+                            <td><?= esc(erp_date($c['end_date'])) ?></td>
                             <td><span class="badge bg-<?= $c['status'] === 'open' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($c['status'])) ?></span></td>
                         </tr>
                     <?php endforeach; ?>

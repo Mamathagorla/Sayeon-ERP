@@ -4,7 +4,6 @@
 <?php if (can('project.edit')): ?>
 <a href="<?= site_url('projects/' . $project['id'] . '/edit') ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
 <?php endif; ?>
-<a href="<?= site_url('projects') ?>" class="btn btn-light btn-sm">Back to list</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -31,8 +30,8 @@
 
 <div class="card mb-3">
     <div class="card-body row">
-        <div class="col-md-6"><strong>Start Date:</strong> <?= $project['start_date'] ? esc(date('d/m/Y', strtotime($project['start_date']))) : '—' ?></div>
-        <div class="col-md-6"><strong>End Date:</strong> <?= $project['end_date'] ? esc(date('d/m/Y', strtotime($project['end_date']))) : '—' ?></div>
+        <div class="col-md-6"><strong>Start Date:</strong> <?= $project['start_date'] ? esc(erp_date($project['start_date'])) : '—' ?></div>
+        <div class="col-md-6"><strong>End Date:</strong> <?= $project['end_date'] ? esc(erp_date($project['end_date'])) : '—' ?></div>
     </div>
 </div>
 
@@ -59,7 +58,7 @@
                     <td><?= esc($t['department_name']) ?></td>
                     <td><?= esc($t['assignee_name'] ?? '—') ?></td>
                     <td><span class="badge bg-<?= ['low' => 'secondary', 'medium' => 'info', 'high' => 'warning', 'urgent' => 'danger'][$t['priority']] ?>"><?= esc(ucfirst($t['priority'])) ?></span></td>
-                    <td><?= $t['due_date'] ? esc(date('d/m/Y', strtotime($t['due_date']))) : '—' ?></td>
+                    <td><?= $t['due_date'] ? esc(erp_date($t['due_date'])) : '—' ?></td>
                     <td><span class="badge bg-dark"><?= esc(ucwords(str_replace('_', ' ', $t['status']))) ?></span></td>
                 </tr>
             <?php endforeach; ?>

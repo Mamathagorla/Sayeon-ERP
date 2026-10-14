@@ -107,7 +107,7 @@ $link = static function (string $stage, string $type): string {
                             </td>
                             <td class="text-muted small"><?= esc($r['department_name'] ?? '—') ?></td>
                             <td class="small"><?= esc(ucfirst($r['exit_type'])) ?></td>
-                            <td class="text-muted small"><?= $r['last_working_day'] ? esc(date('d/m/Y', strtotime($r['last_working_day']))) : '—' ?></td>
+                            <td class="text-muted small"><?= $r['last_working_day'] ? esc(erp_date($r['last_working_day'])) : '—' ?></td>
                             <td>
                                 <div class="sy-off-progress">
                                     <div class="progress"><div class="progress-bar" style="width:<?= $pct ?>%;background:var(--sy-accent-ink)"></div></div>

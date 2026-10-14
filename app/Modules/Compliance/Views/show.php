@@ -2,14 +2,13 @@
 
 <?= $this->section('pageActions') ?>
 <a href="<?= site_url('compliance/' . $item['id'] . '/edit') ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
-<a href="<?= site_url('compliance') ?>" class="btn btn-light btn-sm">Back to list</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <div class="row mb-3">
     <div class="col-md-3"><strong>Company:</strong> <?= esc($item['company_name']) ?></div>
     <div class="col-md-3"><strong>Type:</strong> <?= esc($item['type_name']) ?></div>
-    <div class="col-md-3"><strong>Due Date:</strong> <?= esc(date('d/m/Y', strtotime($item['due_date']))) ?></div>
+    <div class="col-md-3"><strong>Due Date:</strong> <?= esc(erp_date($item['due_date'])) ?></div>
     <div class="col-md-3"><strong>Recurrence:</strong> <?= esc(ucwords(str_replace('_', ' ', $item['recurrence']))) ?></div>
     <?php if (! empty($item['regulator'])): ?>
     <div class="col-md-3 mt-2"><strong>Regulator:</strong> <?= esc($item['regulator']) ?></div>
@@ -34,7 +33,7 @@
                 <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>Mark as Filed</button>
             </form>
         <?php else: ?>
-            <span class="ms-auto small text-success"><i class="fas fa-check-circle me-1"></i>Filed on <?= esc(date('d/m/Y, g:i A', strtotime($item['filed_at']))) ?></span>
+            <span class="ms-auto small text-success"><i class="fas fa-check-circle me-1"></i>Filed on <?= esc(erp_date($item['filed_at']) . ", " . erp_time($item['filed_at'])) ?></span>
         <?php endif; ?>
     </div>
 </div>
@@ -56,7 +55,7 @@
                     <a href="<?= site_url('files/download?path=' . urlencode($a['file_path'])) ?>" target="_blank">
                         <i class="fas fa-paperclip me-1"></i><?= esc($a['original_name']) ?>
                     </a>
-                    <span class="text-muted small ms-2">by <?= esc($a['uploaded_by_name']) ?> · <?= esc(date('d/m/Y, g:i A', strtotime($a['created_at']))) ?></span>
+                    <span class="text-muted small ms-2">by <?= esc($a['uploaded_by_name']) ?> · <?= esc(erp_date($a['created_at']) . ", " . erp_time($a['created_at'])) ?></span>
                     <form action="<?= site_url('compliance/' . $item['id'] . '/attachments/' . $a['id'] . '/delete') ?>" method="post" class="ms-auto">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
@@ -78,7 +77,7 @@
             <ul class="list-group">
                 <?php foreach ($history as $h): ?>
                     <li class="list-group-item small d-flex justify-content-between">
-                        <span>Due <?= esc(date('d/m/Y', strtotime($h['due_date']))) ?> — <span class="badge bg-<?= ['pending' => 'secondary', 'in_progress' => 'info', 'filed' => 'success', 'overdue' => 'danger'][$h['status']] ?>"><?= esc(ucwords(str_replace('_', ' ', $h['status']))) ?></span></span>
+                        <span>Due <?= esc(erp_date($h['due_date'])) ?> — <span class="badge bg-<?= ['pending' => 'secondary', 'in_progress' => 'info', 'filed' => 'success', 'overdue' => 'danger'][$h['status']] ?>"><?= esc(ucwords(str_replace('_', ' ', $h['status']))) ?></span></span>
                         <a href="<?= site_url('compliance/' . $h['id']) ?>">View</a>
                     </li>
                 <?php endforeach; ?>

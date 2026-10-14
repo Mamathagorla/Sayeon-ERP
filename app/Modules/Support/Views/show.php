@@ -13,7 +13,6 @@ $ticketNumber   = '#TKT' . str_pad((string) $ticket['id'], 4, '0', STR_PAD_LEFT)
     <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1"></i>Delete</button>
 </form>
 <?php endif; ?>
-<a href="<?= site_url('help') ?>" class="btn btn-light btn-sm">Back to list</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -47,13 +46,13 @@ $ticketNumber   = '#TKT' . str_pad((string) $ticket['id'], 4, '0', STR_PAD_LEFT)
                     <dd class="col-6 text-end"><?= esc($categoryLabels[$ticket['category']] ?? 'General') ?></dd>
 
                     <dt class="col-6 text-muted fw-normal">Created On</dt>
-                    <dd class="col-6 text-end"><?= esc(date('d/m/Y', strtotime($ticket['created_at']))) ?></dd>
+                    <dd class="col-6 text-end"><?= esc(erp_date($ticket['created_at'])) ?></dd>
 
                     <dt class="col-6 text-muted fw-normal">Due Date</dt>
-                    <dd class="col-6 text-end"><?= $ticket['due_date'] ? esc(date('d/m/Y', strtotime($ticket['due_date']))) : '—' ?></dd>
+                    <dd class="col-6 text-end"><?= $ticket['due_date'] ? esc(erp_date($ticket['due_date'])) : '—' ?></dd>
 
                     <dt class="col-6 text-muted fw-normal">Last Updated</dt>
-                    <dd class="col-6 text-end"><?= esc(date('d/m/Y', strtotime($ticket['updated_at']))) ?></dd>
+                    <dd class="col-6 text-end"><?= esc(erp_date($ticket['updated_at'])) ?></dd>
 
                     <dt class="col-6 text-muted fw-normal">SLA</dt>
                     <dd class="col-6 text-end"><span class="badge bg-<?= $sla['class'] ?>"><?= esc($sla['label']) ?></span></dd>
@@ -103,14 +102,14 @@ $ticketNumber   = '#TKT' . str_pad((string) $ticket['id'], 4, '0', STR_PAD_LEFT)
         <div class="card">
             <div class="card-body">
                 <h5 class="mb-1"><?= esc($ticket['subject']) ?></h5>
-                <div class="text-muted small mb-4"><?= esc($ticketNumber) ?> &middot; <?= esc($categoryLabels[$ticket['category']] ?? 'General') ?> &middot; Created <?= esc(date('d/m/Y', strtotime($ticket['created_at']))) ?></div>
+                <div class="text-muted small mb-4"><?= esc($ticketNumber) ?> &middot; <?= esc($categoryLabels[$ticket['category']] ?? 'General') ?> &middot; Created <?= esc(erp_date($ticket['created_at'])) ?></div>
 
                 <div class="d-flex gap-2 mb-4">
                     <span class="sy-avatar flex-shrink-0"><?= esc(mb_strtoupper(mb_substr($ticket['raiser_name'], 0, 1))) ?></span>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <strong><?= esc($ticket['raiser_name']) ?></strong>
-                            <span class="text-muted small"><?= esc(date('d/m/Y, g:i A', strtotime($ticket['created_at']))) ?></span>
+                            <span class="text-muted small"><?= esc(erp_date($ticket['created_at']) . ", " . erp_time($ticket['created_at'])) ?></span>
                         </div>
                         <div class="bg-light rounded p-3 mt-1"><?= nl2br(esc($ticket['description'])) ?></div>
                     </div>
@@ -129,7 +128,7 @@ $ticketNumber   = '#TKT' . str_pad((string) $ticket['id'], 4, '0', STR_PAD_LEFT)
                             <?php elseif ((int) $m['user_id'] !== (int) $ticket['raised_by']): ?>
                                 <span class="badge bg-info text-dark">Support Agent</span>
                             <?php endif; ?>
-                            <span class="text-muted small"><?= esc(date('d/m/Y, g:i A', strtotime($m['created_at']))) ?></span>
+                            <span class="text-muted small"><?= esc(erp_date($m['created_at']) . ", " . erp_time($m['created_at'])) ?></span>
                         </div>
                         <div class="rounded p-3 mt-1 <?= $m['is_internal_note'] ? 'bg-warning-subtle' : 'bg-light' ?>">
                             <?= nl2br(esc($m['message'])) ?>

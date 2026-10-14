@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-8">
     <div class="card-body">
-        <form action="<?= $template ? site_url('recurring-meetings/' . $template['id']) : site_url('recurring-meetings') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Meeting Details" action="<?= $template ? site_url('recurring-meetings/' . $template['id']) : site_url('recurring-meetings') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -32,6 +32,7 @@
                     <label class="form-label">Meeting Link <span class="text-muted small">(optional)</span></label>
                     <input type="url" name="meeting_link" class="form-control" placeholder="https://…" value="<?= esc(old('meeting_link', $template['meeting_link'] ?? '')) ?>">
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Schedule"></div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Start Time <span class="text-muted small">(optional)</span></label>
                     <input type="time" name="start_time" class="form-control" value="<?= esc(old('start_time', $template['start_time'] ?? '')) ?>">
@@ -39,11 +40,16 @@
                 <div class="col-md-6 mb-3">
                     <label class="form-label">End Time <span class="text-muted small">(optional)</span></label>
                     <input type="time" name="end_time" class="form-control" value="<?= esc(old('end_time', $template['end_time'] ?? '')) ?>">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="ends_next_day" value="1" id="endsNextDay" <?= (old('ends_next_day', $template['ends_next_day'] ?? 0) == 1) ? 'checked' : '' ?>>
+                        <label class="form-check-label small" for="endsNextDay">Ends the next day <span class="text-muted">(overnight — e.g. 11:30 PM to 12:30 AM)</span></label>
+                    </div>
                 </div>
                 <div class="col-12 mb-3">
                     <label class="form-label">Agenda <span class="text-muted small">(optional)</span></label>
                     <textarea name="agenda" class="form-control" rows="2"><?= esc(old('agenda', $template['agenda'] ?? '')) ?></textarea>
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Participants"></div>
                 <div class="col-12 mb-3">
                     <label class="form-label">Standing Attendees <span class="text-muted small">(every generated meeting gets this same list)</span></label>
                     <div class="border rounded p-2" style="max-height:180px;overflow-y:auto">
@@ -60,14 +66,15 @@
                 <div class="col-12 mb-3">
                     <div class="alert alert-light border small mb-0">
                         <strong>Schedule</strong> (fixed after creation) —
-                        <?= esc(ucfirst($template['frequency'])) ?>, starting <?= esc(date('d/m/Y', strtotime($template['start_date']))) ?>,
+                        <?= esc(ucfirst($template['frequency'])) ?>, starting <?= esc(erp_date($template['start_date'])) ?>,
                         <?= $template['end_type'] === 'occurrences'
                             ? 'for ' . (int) $template['occurrences_total'] . ' occurrences'
-                            : 'until ' . esc(date('d/m/Y', strtotime($template['end_date']))) ?>.
+                            : 'until ' . esc(erp_date($template['end_date'])) ?>.
                         <?= (int) $template['occurrences_generated'] ?> generated so far.
                     </div>
                 </div>
                 <?php else: ?>
+                <div class="col-12 erp-section-marker" data-section-title="Recurrence"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Frequency</label>
                     <select name="frequency" class="form-select" required>

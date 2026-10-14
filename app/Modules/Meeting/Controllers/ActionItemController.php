@@ -22,12 +22,20 @@ class ActionItemController extends BaseController
 
     public function store(int $meetingId)
     {
-        if ($this->authorizedMeeting($meetingId) === null) {
+        $meeting = $this->authorizedMeeting($meetingId);
+
+        if ($meeting === null) {
             return redirect()->to('/meetings')->with('error', 'Meeting not found.');
         }
 
         if (! $this->request->getPost('description')) {
             return redirect()->back()->with('error', 'Action item description is required.');
+        }
+
+        // The assignee must be an employee of the meeting's own company (converting the item later creates a task for them).
+        $assignee = $this->request->getPost('assigned_to');
+        if ($assignee && db_connect()->table('employee_profiles')->where('user_id', (int) $assignee)->where('company_id', (int) $meeting['company_id'])->countAllResults() === 0) {
+            return redirect()->back()->with('error', "The assignee must belong to this meeting's company.");
         }
 
         $this->actionItemModel->insert([
@@ -49,8 +57,14 @@ class ActionItemController extends BaseController
 
         $item = $this->actionItemModel->find($itemId);
 
+        $status = (string) $this->request->getPost('status');
+
+        if (! in_array($status, ['pending', 'in_progress', 'completed'], true)) {
+            return redirect()->to('/meetings/' . $meetingId)->with('error', 'Invalid action item status.');
+        }
+
         if ($item && (int) $item['meeting_id'] === $meetingId) {
-            $this->actionItemModel->update($itemId, ['status' => $this->request->getPost('status')]);
+            $this->actionItemModel->update($itemId, ['status' => $status]);
         }
 
         return redirect()->to('/meetings/' . $meetingId);
@@ -74,7 +88,7 @@ class ActionItemController extends BaseController
         }
 
         try {
-            $result = $this->taskService->convert($itemId, $departmentId, (int) $this->currentUserId());
+            $result = $this->taskService->convert($itemId, $departmentId, (int) $this->currentUserId(), (int) $this->request->getPost('project_id'));
         } catch (\RuntimeException $e) {
             return redirect()->to('/meetings/' . $meetingId)->with('error', $e->getMessage());
         }
@@ -110,6 +124,11 @@ class ActionItemController extends BaseController
         $meeting = $this->meetingModel->find($meetingId);
 
         if ($meeting === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $meeting['company_id'])) {
+            return null;
+        }
+
+        // Same rule as viewing the meeting: an employee who was not invited cannot work on it either.
+        if (! (new \App\Modules\Meeting\Models\MeetingParticipantModel())->mayAccess($meeting, (int) $this->currentUserId(), session('roleSlug'))) {
             return null;
         }
 

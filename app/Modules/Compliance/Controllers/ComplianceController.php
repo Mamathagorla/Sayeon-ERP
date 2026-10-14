@@ -77,6 +77,10 @@ class ComplianceController extends BaseController
             return redirect()->to('/compliance')->with('error', 'You can only manage your own company.');
         }
 
+        if ($this->responsibleMismatch()) {
+            return redirect()->back()->withInput()->with('error', 'The responsible person must belong to the selected company.');
+        }
+
         $id = $this->itemModel->insert($this->itemPayload(true));
         $this->logActivity('compliance', 'create', $id, 'Created compliance item #' . $id);
         $this->notifyResponsible((int) $id, $this->request->getPost('title') ?: 'Compliance item', $this->request->getPost('responsible_user_id') ?: null);
@@ -126,6 +130,10 @@ class ComplianceController extends BaseController
 
         if ($this->outOfScope(self::COMPANY_SCOPED_ROLES, (int) $this->request->getPost('company_id'))) {
             return redirect()->to('/compliance')->with('error', 'You can only manage your own company.');
+        }
+
+        if ($this->responsibleMismatch()) {
+            return redirect()->back()->withInput()->with('error', 'The responsible person must belong to the selected company.');
         }
 
         $newResponsible = $this->request->getPost('responsible_user_id') ?: null;
@@ -253,6 +261,15 @@ class ComplianceController extends BaseController
      * URL, so each re-checks it's within the viewer's company scope
      * before touching it.
      */
+    /** The responsible person must be an employee of the item's company. Blank is allowed. */
+    private function responsibleMismatch(): bool
+    {
+        $userId = (int) $this->request->getPost('responsible_user_id');
+
+        return $userId > 0 && db_connect()->table('employee_profiles')
+            ->where('user_id', $userId)->where('company_id', (int) $this->request->getPost('company_id'))->countAllResults() === 0;
+    }
+
     private function authorizedItem(int $id): ?array
     {
         $item = $this->itemModel->find($id);
@@ -340,6 +357,8 @@ class ComplianceController extends BaseController
             'selectedCompanyId' => $companyId,
             'types'          => $this->typeModel->optionsList(),
             'applicableIds'  => $companyId !== 0 ? $this->companyTypeModel->applicableIdsFor($companyId) : [],
+            // Set by the "New" dialog after it adds a type, so the page can confirm it.
+            'addedName'      => trim((string) $this->request->getGet('added')) ?: null,
         ]);
     }
 

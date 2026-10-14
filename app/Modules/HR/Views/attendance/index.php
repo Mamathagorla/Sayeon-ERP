@@ -55,7 +55,6 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
 <div class="alert alert-info py-2 small">Showing only your own attendance.</div>
 <?php endif; ?>
 
-<p class="text-muted mb-3">Track and manage employee attendance, working hours and leave records.</p>
 
 <div class="row row-cols-2 row-cols-lg-4 g-3 mb-3">
     <?php if (! $isPersonalScope): ?>
@@ -99,7 +98,7 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
             <?php endforeach; ?>
         </div>
 
-        <div class="sy-card mb-3">
+        <div class="sy-card mb-3" style="height:auto">
             <div class="sy-card-body">
                 <form method="get" class="row g-2 align-items-end filter-form">
                     <input type="hidden" name="tab" value="<?= esc($tab) ?>">
@@ -139,7 +138,7 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
             </div>
         </div>
 
-        <div class="sy-card">
+        <div class="sy-card" style="height:auto">
             <div class="sy-card-body p-0">
 
                 <?php if ($tab === 'attendance'): ?>
@@ -165,13 +164,13 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
                                     <td><a href="<?= site_url('hr/attendance/employee/' . $r['user_id']) ?>" title="View full attendance history"><?= esc($r['user_name']) ?></a></td>
                                     <td class="text-muted small"><?= esc($r['department_name'] ?? '—') ?></td>
                                 <?php endif; ?>
-                                <td><?= esc(date('d/m/Y', strtotime($r['date']))) ?></td>
-                                <td><?= $r['check_in'] ? esc(date('g:i A', strtotime($r['check_in']))) : '—' ?></td>
-                                <td><?= $r['check_out'] ? esc(date('g:i A', strtotime($r['check_out']))) : '—' ?></td>
+                                <td><?= esc(erp_date($r['date'])) ?></td>
+                                <td><?= $r['check_in'] ? esc(erp_time($r['check_in'])) : '—' ?></td>
+                                <td><?= $r['check_out'] ? esc(erp_time($r['check_out'])) : '—' ?></td>
                                 <td><?= esc($hours) ?></td>
                                 <td><span class="badge bg-<?= $statusBadge[$r['status']] ?? 'secondary' ?>"><?= esc($label($r['status'])) ?></span></td>
                                 <?php if ($canSeeLogins): ?>
-                                    <td class="text-muted small"><?= $r['last_login_at'] ? esc(date('d/m/Y, g:i A', strtotime($r['last_login_at']))) : '—' ?></td>
+                                    <td class="text-muted small"><?= $r['last_login_at'] ? esc(erp_date($r['last_login_at']) . ", " . erp_time($r['last_login_at'])) : '—' ?></td>
                                 <?php endif; ?>
                                 <?php if (! $isPersonalScope): ?>
                                     <td class="text-end"><a href="<?= site_url('hr/attendance/employee/' . $r['user_id']) ?>" class="btn btn-sm btn-outline-secondary" title="View history"><i class="fas fa-eye"></i></a></td>
@@ -219,8 +218,8 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
                             <tr>
                                 <td><a href="<?= site_url('hr/attendance/employee/' . $r['user_id']) ?>" title="View full attendance history"><?= esc($r['user_name']) ?></a></td>
                                 <td class="text-muted small"><?= esc($r['department_name'] ?? '—') ?></td>
-                                <td><?= esc(date('d/m/Y', strtotime($r['date']))) ?></td>
-                                <td class="text-danger fw-semibold"><?= esc(date('g:i A', strtotime($r['check_in']))) ?></td>
+                                <td><?= esc(erp_date($r['date'])) ?></td>
+                                <td class="text-danger fw-semibold"><?= esc(erp_time($r['check_in'])) ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -240,8 +239,8 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
                             <tr>
                                 <td><a href="<?= site_url('hr/attendance/employee/' . $r['user_id']) ?>" title="View full attendance history"><?= esc($r['user_name']) ?></a></td>
                                 <td class="text-muted small"><?= esc($r['department_name'] ?? '—') ?></td>
-                                <td><?= esc(date('d/m/Y', strtotime($r['date']))) ?></td>
-                                <td class="text-danger fw-semibold"><?= esc(date('g:i A', strtotime($r['check_out']))) ?></td>
+                                <td><?= esc(erp_date($r['date'])) ?></td>
+                                <td class="text-danger fw-semibold"><?= esc(erp_time($r['check_out'])) ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -255,7 +254,7 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
     </div>
 
     <div class="col-xl-3">
-        <div class="sy-card mb-3">
+        <div class="sy-card mb-3" style="height:auto">
             <div class="sy-card-header"><strong>Attendance Calendar</strong></div>
             <div class="sy-card-body">
                 <div class="text-center fw-semibold small mb-2"><?= esc(date('F Y')) ?></div>
@@ -273,7 +272,7 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
                                     $cellDate = date('Y-m-') . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
                                     $classes  = trim(($day === $todayDay ? 'today ' : '') . ($cellDate === $selectedDate ? 'selected' : ''));
                                 ?>
-                                    <a href="<?= $qs(['date_from' => $cellDate, 'date_to' => $cellDate, 'tab' => 'attendance']) ?>" class="<?= $classes ?>" title="View attendance for <?= esc(date('d M Y', strtotime($cellDate))) ?>"><?= $day ?></a>
+                                    <a href="<?= $qs(['date_from' => $cellDate, 'date_to' => $cellDate, 'tab' => 'attendance']) ?>" class="<?= $classes ?>" title="View attendance for <?= esc(erp_date($cellDate)) ?>"><?= $day ?></a>
                                 <?php endif; ?>
                             </td>
                         <?php endfor; ?>
@@ -283,7 +282,7 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
                 </table>
                 <?php if ($selectedDate): ?>
                 <div class="text-center small mt-2">
-                    Showing <strong><?= esc(date('d M Y', strtotime($selectedDate))) ?></strong> only —
+                    Showing <strong><?= esc(erp_date($selectedDate)) ?></strong> only —
                     <a href="<?= $qs(['date_from' => null, 'date_to' => null]) ?>">show all</a>
                 </div>
                 <?php endif; ?>
@@ -291,7 +290,7 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
         </div>
 
         <?php if ($canManage): ?>
-        <div class="sy-card mb-3">
+        <div class="sy-card mb-3" style="height:auto">
             <div class="sy-card-header"><strong>Quick Actions</strong></div>
             <div class="sy-card-body d-flex flex-column gap-2">
                 <a href="<?= site_url('hr/attendance/mark') ?>" class="btn btn-primary btn-sm text-start"><i class="fas fa-user-check me-2"></i>Mark Attendance</a>
@@ -301,12 +300,12 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
         </div>
         <?php endif; ?>
 
-        <div class="sy-card">
+        <div class="sy-card" style="height:auto">
             <div class="sy-card-header"><strong>Attendance Rules</strong></div>
             <div class="sy-card-body small text-muted">
                 <ul class="ps-3 mb-0">
-                    <li class="mb-1">Late arrival after <?= esc(date('g:i A', strtotime($lateAfter))) ?></li>
-                    <li>Early departure before <?= esc(date('g:i A', strtotime($earlyBefore))) ?></li>
+                    <li class="mb-1">Late arrival after <?= esc(erp_time($lateAfter)) ?></li>
+                    <li>Early departure before <?= esc(erp_time($earlyBefore)) ?></li>
                 </ul>
             </div>
         </div>
@@ -318,8 +317,8 @@ $selectedDate = ($filters['date_from'] ?? null) && ($filters['date_from'] === ($
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var rows = <?= json_encode(array_map(static fn (array $r) => [
-        $r['user_name'] ?? '', $r['department_name'] ?? '', date('d/m/Y', strtotime($r['date'])),
-        $r['check_in'] ? date('g:i A', strtotime($r['check_in'])) : '', $r['check_out'] ? date('g:i A', strtotime($r['check_out'])) : '',
+        $r['user_name'] ?? '', $r['department_name'] ?? '', erp_date($r['date']),
+        $r['check_in'] ? erp_time($r['check_in']) : '', $r['check_out'] ? erp_time($r['check_out']) : '',
         ucwords(str_replace('_', ' ', $r['status'])),
     ], $records), JSON_UNESCAPED_UNICODE) ?>;
     var header = ['Employee', 'Department', 'Date', 'Check In', 'Check Out', 'Status'];

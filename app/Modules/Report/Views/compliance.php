@@ -62,7 +62,7 @@
                     <td><?= esc($i['type_name']) ?></td>
                     <td><?= esc($i['responsible_name'] ?? 'Unassigned') ?></td>
                     <td><?= esc(ucwords(str_replace('_', ' ', $i['status']))) ?></td>
-                    <td><?= esc(date('d/m/Y', strtotime($i['due_date']))) ?></td>
+                    <td><?= esc(erp_date($i['due_date'])) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

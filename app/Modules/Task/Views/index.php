@@ -78,11 +78,16 @@
                     </button>
                     <div class="dropdown-menu sy-msel-menu">
                         <?php foreach ($priorities as $p): ?>
+                            <?php if ($p === 'urgent') continue; // replaced by the Overdue option below ?>
                             <label class="sy-msel-item" data-label="<?= esc(ucfirst($p)) ?>">
                                 <input type="checkbox" class="sy-msel-opt" name="priority[]" value="<?= $p ?>" <?= in_array($p, $selectedPriorities, true) ? 'checked' : '' ?>>
                                 <?= esc(ucfirst($p)) ?>
                             </label>
                         <?php endforeach; ?>
+                        <label class="sy-msel-item" data-label="Overdue">
+                            <input type="checkbox" class="sy-msel-opt" name="overdue" value="1" id="overdueChk" <?= ! empty($filters['overdue']) ? 'checked' : '' ?>>
+                            Overdue
+                        </label>
                         <button type="submit" class="btn btn-primary btn-sm w-100 sy-msel-apply">Apply</button>
                     </div>
                 </div>
@@ -107,12 +112,6 @@
                 </div>
             </div>
             <?php endif; ?>
-            <div class="col-auto">
-                <label class="sy-task-overdue mb-0">
-                    <input type="checkbox" name="overdue" value="1" class="form-check-input m-0" id="overdueChk" <?= ! empty($filters['overdue']) ? 'checked' : '' ?>>
-                    <span><i class="fas fa-triangle-exclamation me-1 text-danger"></i>Overdue only</span>
-                </label>
-            </div>
             <?php if (array_filter($filters)): ?>
             <div class="col-auto">
                 <a href="<?= site_url('tasks') ?>" class="sy-task-clear"><i class="fas fa-rotate-left"></i>Clear filters</a>
@@ -141,7 +140,7 @@
                     <td><?= esc($t['department_name']) ?></td>
                     <td><?= esc($t['assignee_name'] ?? '—') ?></td>
                     <td><span class="badge bg-<?= ['low' => 'secondary', 'medium' => 'info', 'high' => 'warning', 'urgent' => 'danger'][$t['priority']] ?>"><?= esc(ucfirst($t['priority'])) ?></span></td>
-                    <td><?= $t['due_date'] ? esc(date('d/m/Y', strtotime($t['due_date']))) : '—' ?></td>
+                    <td><?= $t['due_date'] ? esc(erp_date($t['due_date'])) : '—' ?></td>
                     <td><span class="badge bg-dark"><?= esc(ucwords(str_replace('_', ' ', $t['status']))) ?></span></td>
                 </tr>
             <?php endforeach; ?>

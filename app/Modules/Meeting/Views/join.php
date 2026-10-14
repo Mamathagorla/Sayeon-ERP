@@ -3,11 +3,12 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-7">
     <div class="card-body">
-        <div class="alert alert-info small mb-3"><i class="fas fa-circle-info me-1"></i>No external call link (Zoom/Teams/etc.) has been set for this meeting yet — here are the details.</div>
+        <div class="alert alert-info small mb-3"><i class="fas fa-circle-info me-1"></i>No meeting link (Google Meet or Zoom) has been set for this meeting yet — here are the details.</div>
         <h4><?= esc($meeting['title']) ?></h4>
         <div class="row my-3">
-            <div class="col-md-4"><strong>Date:</strong> <?= esc(date('d/m/Y', strtotime($meeting['meeting_date']))) ?></div>
-            <div class="col-md-4"><strong>Time:</strong> <?= esc($meeting['start_time'] ? substr($meeting['start_time'], 0, 5) : '—') ?><?= $meeting['end_time'] ? ' - ' . substr($meeting['end_time'], 0, 5) : '' ?></div>
+            <?php $when = erp_meeting_when($meeting['meeting_date'], $meeting['start_time'], $meeting['end_time'], $meeting['end_date'] ?? null, $meeting['timezone'] ?? null); ?>
+            <div class="col-md-4"><strong>Date:</strong> <?= esc($when['date']) ?></div>
+            <div class="col-md-4"><strong>Time:</strong> <?= esc($when['start']) ?><?= $when['end'] !== null ? ' - ' . esc($when['end']) : '' ?><?= $when['nextDay'] ? ' (next day)' : '' ?> <small class="text-muted">(<?= esc($when['zone']) ?>)</small></div>
             <div class="col-md-4"><strong>Location:</strong> <?= esc($meeting['location'] ?? '—') ?></div>
         </div>
         <?php if (! empty($meeting['agenda'])): ?>

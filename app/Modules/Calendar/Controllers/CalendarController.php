@@ -110,19 +110,6 @@ class CalendarController extends BaseController
             if ($companyId !== null && $companyId !== '') {
                 $filters['company_id'] = $companyId;
             }
-            // "Show only important/relevant events" — a completed or
-            // cancelled task's due-date marker isn't useful on a
-            // forward-looking calendar once it's done; reuses the same
-            // status filter the Tasks list page already has, just with
-            // every status except those two.
-            $filters['status'] = array_values(array_diff(TaskModel::STATUSES, ['completed', 'cancelled']));
-            // Further narrowed to high/urgent priority only — confirmed
-            // with the user that even after excluding completed/
-            // cancelled, ordinary low/medium-priority tasks still read
-            // as clutter on a calendar meant to surface what actually
-            // matters this week.
-            $filters['priority'] = ['high', 'urgent'];
-
             foreach ($this->taskModel->filtered($filters)->findAll() as $task) {
                 if (! $task['due_date']) {
                     continue;
@@ -171,11 +158,6 @@ class CalendarController extends BaseController
                 'company_id'          => $companyId,
                 'responsible_user_id' => $isPersonalScope ? $userId : null,
             ]);
-            // Same "important events only" rule as Tasks above — a 'filed'
-            // compliance item is already resolved, so its due-date marker
-            // stops being useful on a forward-looking calendar.
-            $filters['status'] = array_values(array_diff(ComplianceItemModel::STATUSES, ['filed']));
-
             foreach ($this->complianceModel->filtered($filters)->findAll() as $item) {
                 $overdue = $item['status'] === 'overdue';
 

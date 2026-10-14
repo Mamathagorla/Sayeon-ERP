@@ -22,7 +22,7 @@
                     <td><?= esc($u['email']) ?></td>
                     <td><span class="badge bg-info"><?= esc($u['role_name']) ?></span></td>
                     <td><span class="badge bg-<?= $u['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc($u['status']) ?></span></td>
-                    <td><?= $u['last_login_at'] ? esc(date('d/m/Y, g:i A', strtotime($u['last_login_at']))) : '—' ?></td>
+                    <td><?= $u['last_login_at'] ? esc(erp_date($u['last_login_at']) . ", " . erp_time($u['last_login_at'])) : '—' ?></td>
                     <td class="text-end">
                         <a href="<?= site_url('auth/users/' . $u['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>
                         <form action="<?= site_url('auth/users/' . $u['id'] . '/delete') ?>" method="post" class="d-inline" onsubmit="return confirm('Deactivate this user?');">

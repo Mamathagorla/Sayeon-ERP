@@ -54,7 +54,7 @@
         <?php if (! empty($payslip['employee_code'])): ?><div><span class="k">Employee ID:</span> <span class="v"><?= esc($payslip['employee_code']) ?></span></div><?php endif; ?>
         <?php if (! empty($payslip['designation'])): ?><div><span class="k">Designation:</span> <span class="v"><?= esc($payslip['designation']) ?></span></div><?php endif; ?>
         <?php if (! empty($payslip['department_name'])): ?><div><span class="k">Department:</span> <span class="v"><?= esc($payslip['department_name']) ?></span></div><?php endif; ?>
-        <?php if (! empty($payslip['date_of_joining'])): ?><div><span class="k">Joining Date:</span> <span class="v"><?= esc(date('d M Y', strtotime($payslip['date_of_joining']))) ?></span></div><?php endif; ?>
+        <?php if (! empty($payslip['date_of_joining'])): ?><div><span class="k">Joining Date:</span> <span class="v"><?= esc(erp_date($payslip['date_of_joining'])) ?></span></div><?php endif; ?>
         <div><span class="k">Pay Period:</span> <span class="v"><?= esc($monthName) ?> <?= esc($payslip['year']) ?></span></div>
     </div>
 
@@ -63,24 +63,24 @@
     <div class="sy-payslip-cols">
         <div>
             <h6><span>Earnings</span><span>Amount</span></h6>
-            <div class="sy-payslip-line"><span>Basic Salary</span><span><?= number_format((float) $payslip['basic'], 2) ?></span></div>
-            <div class="sy-payslip-line"><span>HRA</span><span><?= number_format((float) $payslip['hra'], 2) ?></span></div>
-            <div class="sy-payslip-line"><span>Allowances</span><span><?= number_format((float) $payslip['allowances'], 2) ?></span></div>
-            <div class="sy-payslip-total"><span>Gross Earnings</span><span><?= number_format((float) $payslip['gross'], 2) ?></span></div>
+            <div class="sy-payslip-line"><span>Basic Salary</span><span><?= erp_number((float) $payslip['basic'], 2) ?></span></div>
+            <div class="sy-payslip-line"><span>HRA</span><span><?= erp_number((float) $payslip['hra'], 2) ?></span></div>
+            <div class="sy-payslip-line"><span>Allowances</span><span><?= erp_number((float) $payslip['allowances'], 2) ?></span></div>
+            <div class="sy-payslip-total"><span>Gross Earnings</span><span><?= erp_number((float) $payslip['gross'], 2) ?></span></div>
         </div>
         <div>
             <h6><span>Deductions</span><span>Amount</span></h6>
-            <div class="sy-payslip-line"><span>Deductions</span><span><?= number_format((float) $payslip['deductions'], 2) ?></span></div>
+            <div class="sy-payslip-line"><span>Deductions</span><span><?= erp_number((float) $payslip['deductions'], 2) ?></span></div>
             <?php if ((float) ($payslip['lop_days'] ?? 0) > 0): ?>
-            <div class="sy-payslip-line"><span>Loss of Pay (<?= rtrim(rtrim(number_format((float) $payslip['lop_days'], 1), '0'), '.') ?> day<?= (float) $payslip['lop_days'] != 1 ? 's' : '' ?>)</span><span><?= number_format((float) $payslip['lop_amount'], 2) ?></span></div>
+            <div class="sy-payslip-line"><span>Loss of Pay (<?= rtrim(rtrim(erp_number((float) $payslip['lop_days'], 1), '0'), '.') ?> day<?= (float) $payslip['lop_days'] != 1 ? 's' : '' ?>)</span><span><?= erp_number((float) $payslip['lop_amount'], 2) ?></span></div>
             <?php endif; ?>
-            <div class="sy-payslip-total"><span>Total Deductions</span><span><?= number_format((float) $payslip['deductions'] + (float) ($payslip['lop_amount'] ?? 0), 2) ?></span></div>
+            <div class="sy-payslip-total"><span>Total Deductions</span><span><?= erp_number((float) $payslip['deductions'] + (float) ($payslip['lop_amount'] ?? 0), 2) ?></span></div>
         </div>
     </div>
 
     <div class="sy-payslip-net">
         <span class="label">Net Salary</span>
-        <span class="amount">₹<?= number_format((float) $payslip['net'], 2) ?></span>
+        <span class="amount"><?= erp_money((float) $payslip['net']) ?></span>
     </div>
 
     <div class="sy-payslip-words">

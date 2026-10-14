@@ -21,14 +21,14 @@
             <?php foreach ($payslips as $p): ?>
                 <tr>
                     <td><?= esc($p['user_name']) ?></td>
-                    <td class="text-end"><?= number_format($p['basic'], 2) ?></td>
-                    <td class="text-end"><?= number_format($p['hra'], 2) ?></td>
-                    <td class="text-end"><?= number_format($p['allowances'], 2) ?></td>
-                    <td class="text-end"><?= number_format($p['deductions'], 2) ?></td>
-                    <td class="text-end"><?= (float) ($p['lop_days'] ?? 0) > 0 ? number_format($p['lop_amount'], 2) . ' (' . rtrim(rtrim(number_format($p['lop_days'], 1), '0'), '.') . 'd)' : '—' ?></td>
-                    <td class="text-end"><?= number_format($p['gross'], 2) ?></td>
-                    <td class="text-end fw-semibold"><?= number_format($p['net'], 2) ?></td>
-                    <td><a href="<?= site_url('hr/payroll/payslip/' . $p['id']) ?>" class="btn btn-sm btn-outline-secondary">View</a></td>
+                    <td class="text-end"><?= erp_number($p['basic'], 2) ?></td>
+                    <td class="text-end"><?= erp_number($p['hra'], 2) ?></td>
+                    <td class="text-end"><?= erp_number($p['allowances'], 2) ?></td>
+                    <td class="text-end"><?= erp_number($p['deductions'], 2) ?></td>
+                    <td class="text-end"><?= (float) ($p['lop_days'] ?? 0) > 0 ? erp_number($p['lop_amount'], 2) . ' (' . rtrim(rtrim(erp_number($p['lop_days'], 1), '0'), '.') . 'd)' : '—' ?></td>
+                    <td class="text-end"><?= erp_number($p['gross'], 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number($p['net'], 2) ?></td>
+                    <td><?php if (\App\Modules\Document\Services\DocumentAvailability::shared()->has('payslip', (int) ($p['company_id'] ?? 0))): ?><a href="<?= site_url('hr/payroll/payslip/' . $p['id']) ?>" class="btn btn-sm btn-outline-secondary" data-erp-form="off">View</a><?php else: ?><span class="text-muted small" title="No payslip template is active for this employee's company">No template</span><?php endif; ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

@@ -123,7 +123,7 @@ $hasStatusData = ($completedTasks + $activeTasks + $overdueTasks) > 0;
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <p class="text-muted mb-0">Welcome back, <strong><?= esc(session('userName')) ?></strong>.</p>
-    <span class="sy-week-chip"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc($weekRangeLabel) ?></span>
+    <button type="button" class="sy-week-chip" data-erp-calendar="<?= esc(date('Y-m-d', strtotime('monday this week')) . ',' . date('Y-m-d', strtotime('sunday this week'))) ?>" aria-haspopup="dialog" aria-label="Show calendar for <?= esc($weekRangeLabel) ?>"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc($weekRangeLabel) ?></button>
 </div>
 
 <!-- KPI cards: Revenue, Expenses, Outstanding, Pending Tasks — the
@@ -134,7 +134,7 @@ $hasStatusData = ($completedTasks + $activeTasks + $overdueTasks) > 0;
         <div class="sy-stat-card sy-hero">
             <div class="sy-stat-icon" style="background:rgba(255,255,255,.55);color:var(--sy-hero-ink)"><i class="fas fa-sack-dollar"></i></div>
             <div class="sy-stat-label">REVENUE (MTD)</div>
-            <div class="sy-stat-value"><?= number_format($financeRevenue, 2) ?></div>
+            <div class="sy-stat-value"><?= erp_number($financeRevenue, 2) ?></div>
             <div class="sy-stat-trend">This month, all companies</div>
         </div>
     </div>
@@ -142,7 +142,7 @@ $hasStatusData = ($completedTasks + $activeTasks + $overdueTasks) > 0;
         <div class="sy-stat-card sy-hero">
             <div class="sy-stat-icon" style="background:rgba(255,255,255,.55);color:var(--sy-hero-ink)"><i class="fas fa-file-invoice-dollar"></i></div>
             <div class="sy-stat-label">EXPENSES (MONTHLY)</div>
-            <div class="sy-stat-value"><?= number_format($financeExpenses, 2) ?></div>
+            <div class="sy-stat-value"><?= erp_number($financeExpenses, 2) ?></div>
             <div class="sy-stat-trend">This month, all companies</div>
         </div>
     </div>
@@ -150,7 +150,7 @@ $hasStatusData = ($completedTasks + $activeTasks + $overdueTasks) > 0;
         <div class="sy-stat-card sy-hero">
             <div class="sy-stat-icon" style="background:rgba(255,255,255,.55);color:var(--sy-hero-ink)"><i class="fas fa-hourglass-half"></i></div>
             <div class="sy-stat-label">OUTSTANDING</div>
-            <div class="sy-stat-value"><?= number_format($financeOutstanding, 2) ?></div>
+            <div class="sy-stat-value"><?= erp_number($financeOutstanding, 2) ?></div>
             <div class="sy-stat-trend">Awaiting payment</div>
         </div>
     </div>
@@ -233,15 +233,15 @@ $hasStatusData = ($completedTasks + $activeTasks + $overdueTasks) > 0;
             <div class="sy-card-body">
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-muted small"><i class="fas fa-arrow-down text-success me-1"></i>Revenue (MTD)</span>
-                    <span class="fw-semibold"><?= number_format($financeRevenue, 2) ?></span>
+                    <span class="fw-semibold"><?= erp_number($financeRevenue, 2) ?></span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-muted small"><i class="fas fa-arrow-up text-danger me-1"></i>Expenses (monthly)</span>
-                    <span class="fw-semibold"><?= number_format($financeExpenses, 2) ?></span>
+                    <span class="fw-semibold"><?= erp_number($financeExpenses, 2) ?></span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <span class="text-muted small"><i class="fas fa-hourglass-half text-warning me-1"></i>Outstanding</span>
-                    <span class="fw-semibold"><?= number_format($financeOutstanding, 2) ?></span>
+                    <span class="fw-semibold"><?= erp_number($financeOutstanding, 2) ?></span>
                 </div>
             </div>
         </div>

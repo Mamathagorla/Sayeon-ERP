@@ -18,8 +18,8 @@
     <div class="meta">Generated <?= esc($generatedAt) ?> · Sayeon · Sanvima Solutions Group</div>
 
     <div class="summary">
-        <div><strong>Total Budget:</strong> <?= number_format($totalBudget, 2) ?></div>
-        <div><strong>Total Revenue:</strong> <?= number_format($totalRevenue, 2) ?></div>
+        <div><strong>Total Budget:</strong> <?= erp_number($totalBudget, 2) ?></div>
+        <div><strong>Total Revenue:</strong> <?= erp_number($totalRevenue, 2) ?></div>
         <div><strong>Overall ROI:</strong> <?= $overallRoi !== null ? $overallRoi . '%' : 'N/A' ?></div>
     </div>
 
@@ -31,10 +31,10 @@
                 <td><?= esc($c['name']) ?></td>
                 <td><?= esc($c['company_name']) ?></td>
                 <td><?= esc(\App\Modules\Marketing\Models\CampaignModel::CHANNEL_LABELS[$c['channel']]) ?></td>
-                <td><?= number_format($c['budget'], 2) ?></td>
+                <td><?= erp_number($c['budget'], 2) ?></td>
                 <td><?= $c['leads'] ?></td>
                 <td><?= $c['conversions'] ?></td>
-                <td><?= number_format($c['revenue'], 2) ?></td>
+                <td><?= erp_number($c['revenue'], 2) ?></td>
                 <td><?= $c['roi'] !== null ? $c['roi'] . '%' : 'N/A' ?></td>
                 <td><?= esc(ucfirst($c['status'])) ?></td>
             </tr>

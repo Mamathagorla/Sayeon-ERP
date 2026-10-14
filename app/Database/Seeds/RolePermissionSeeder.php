@@ -199,6 +199,17 @@ class RolePermissionSeeder extends Seeder
             ],
         ];
 
+        // Expense claims (see ExpenseClaimController): everyone files; Manager/HR approve; Accountant/Admin also reimburse.
+        $claimGrants = [
+            'employee' => ['view', 'create'], 'compliance_officer' => ['view', 'create'], 'manager' => ['view', 'create', 'approve'],
+            'hr' => ['view', 'create', 'approve'], 'accountant' => ['view', 'create', 'approve', 'reimburse'], 'admin' => ['view', 'create', 'approve', 'reimburse'],
+        ];
+        foreach ($claimGrants as $roleSlug => $actions) {
+            if (isset($map[$roleSlug]) && $map[$roleSlug] !== ['*']) {
+                $map[$roleSlug] = array_merge($map[$roleSlug], array_map(static fn ($a) => "expense_claim.{$a}", $actions));
+            }
+        }
+
         $allPermissions = $this->db->table('permissions')->select('id, slug')->get()->getResultArray();
         $slugToId       = array_column($allPermissions, 'id', 'slug');
 

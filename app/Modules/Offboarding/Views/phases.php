@@ -1,7 +1,6 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/offboarding') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Offboarding</a>
 <a href="<?= site_url('hr/offboarding/phases/create') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>Add Phase</a>
 <?= $this->endSection() ?>
 

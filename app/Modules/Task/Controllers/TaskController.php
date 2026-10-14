@@ -181,7 +181,14 @@ class TaskController extends BaseController
         // still carries the broken {id}-placeholder form and would
         // otherwise silently re-reject this save through Model::update()'s
         // automatic validation whenever task_code is left unchanged.
-        $this->taskModel->skipValidation(true)->update($id, $this->taskPayload(false));
+        $payload = $this->taskPayload(false);
+        if ($payload['status'] === 'completed') {
+            $payload['completed_at'] = $existing['status'] === 'completed' ? $existing['completed_at'] : date('Y-m-d H:i:s');
+        } else {
+            $payload['completed_at'] = null;
+        }
+        $this->taskModel->skipValidation(true)->update($id, $payload);
+        $this->syncMeetingActionItem($id, $payload['status']);
         $this->logActivity('task', 'update', $id, 'Updated task #' . $id);
 
         if ((int) $newAssignedTo !== (int) $existing['assigned_to']) {
@@ -219,12 +226,10 @@ class TaskController extends BaseController
             return redirect()->back()->with('error', 'Invalid status.');
         }
 
-        $data = ['status' => $newStatus];
-        if ($newStatus === 'completed') {
-            $data['completed_at'] = date('Y-m-d H:i:s');
-        }
+        $data = ['status' => $newStatus, 'completed_at' => $newStatus === 'completed' ? date('Y-m-d H:i:s') : null];
 
         $this->taskModel->update($id, $data);
+        $this->syncMeetingActionItem($id, $newStatus);
         $this->historyModel->record($id, $task['status'], $newStatus, (int) $this->currentUserId());
         $this->logActivity('task', 'update', $id, "Status changed: {$task['status']} â†’ {$newStatus}");
 
@@ -350,6 +355,21 @@ class TaskController extends BaseController
      * checklist, attachments) so none of them can be reached for a task
      * outside a scoped user's own company just by knowing its id.
      */
+    /**
+     * A task created from a meeting action item and that item are one piece of work: completing the task completes
+     * the action item (re-opening the task re-opens it).
+     */
+    private function syncMeetingActionItem(int $taskId, string $taskStatus): void
+    {
+        $items = db_connect()->table('meeting_action_items')->where('linked_task_id', $taskId);
+
+        if ($taskStatus === 'completed') {
+            $items->update(['status' => 'completed']);
+        } elseif ($taskStatus === 'in_progress') {
+            $items->where('status', 'completed')->update(['status' => 'in_progress']);
+        }
+    }
+
     private function authorizedTask(int $id): ?array
     {
         $task = $this->taskModel->find($id);

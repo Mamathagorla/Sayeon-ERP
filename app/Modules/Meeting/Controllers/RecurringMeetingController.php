@@ -39,10 +39,17 @@ class RecurringMeetingController extends BaseController
             $filters['company_id'] = $companyScope;
         }
 
+        $templates = $this->recurringModel->filtered($filters)->findAll();
+        $today     = date('Y-m-d');
+        foreach ($templates as &$t) {
+            $t['next_occurrence'] = $this->recurringModel->nextOccurrenceDate($t, $today);
+        }
+        unset($t);
+
         return view('App\Modules\Meeting\recurring_index', [
             'title'     => 'Recurring Meetings',
             'navActive' => 'recurring-meetings',
-            'templates' => $this->recurringModel->filtered($filters)->findAll(),
+            'templates' => $templates,
             'companies' => $this->scopedCompanyOptions($this->companyModel->optionsList()),
             'statuses'  => RecurringMeetingModel::STATUSES,
             'filters'   => $filters,
@@ -71,6 +78,11 @@ class RecurringMeetingController extends BaseController
             return redirect()->back()->withInput()->with('error', $error);
         }
 
+        $timeError = $this->validateTimes();
+        if ($timeError !== null) {
+            return redirect()->back()->withInput()->with('error', $timeError);
+        }
+
         $startDate = $this->request->getPost('start_date');
 
         $id = $this->recurringModel->insert([
@@ -81,6 +93,8 @@ class RecurringMeetingController extends BaseController
             'meeting_link'          => $this->request->getPost('meeting_link') ?: null,
             'start_time'            => $this->request->getPost('start_time') ?: null,
             'end_time'              => $this->request->getPost('end_time') ?: null,
+            'ends_next_day'         => $this->request->getPost('ends_next_day') === '1' ? 1 : 0,
+            'timezone'              => erp_org_timezone(),
             'frequency'             => $this->request->getPost('frequency') ?: 'weekly',
             'start_date'            => $startDate,
             'end_type'              => $this->request->getPost('end_type') ?: 'occurrences',
@@ -137,13 +151,19 @@ class RecurringMeetingController extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
+        $timeError = $this->validateTimes();
+        if ($timeError !== null) {
+            return redirect()->back()->withInput()->with('error', $timeError);
+        }
+
         $this->recurringModel->update($id, [
-            'title'        => $this->request->getPost('title'),
-            'agenda'       => $this->request->getPost('agenda'),
-            'location'     => $this->request->getPost('location') ?: null,
-            'meeting_link' => $this->request->getPost('meeting_link') ?: null,
-            'start_time'   => $this->request->getPost('start_time') ?: null,
-            'end_time'     => $this->request->getPost('end_time') ?: null,
+            'title'         => $this->request->getPost('title'),
+            'agenda'        => $this->request->getPost('agenda'),
+            'location'      => $this->request->getPost('location') ?: null,
+            'meeting_link'  => $this->request->getPost('meeting_link') ?: null,
+            'start_time'    => $this->request->getPost('start_time') ?: null,
+            'end_time'      => $this->request->getPost('end_time') ?: null,
+            'ends_next_day' => $this->request->getPost('ends_next_day') === '1' ? 1 : 0,
         ]);
 
         $this->templateParticipantModel->replaceForTemplate($id, $this->request->getPost('participant_user_ids') ?? []);
@@ -243,6 +263,15 @@ class RecurringMeetingController extends BaseController
             'users'      => $this->scopedUserOptions($this->userModel->listForOptions()),
             'selectedParticipantIds' => [],
         ];
+    }
+
+    private function validateTimes(): ?string
+    {
+        return $this->recurringModel->timeRangeError(
+            $this->request->getPost('start_time') ?: null,
+            $this->request->getPost('end_time') ?: null,
+            $this->request->getPost('ends_next_day') === '1'
+        );
     }
 
     /**

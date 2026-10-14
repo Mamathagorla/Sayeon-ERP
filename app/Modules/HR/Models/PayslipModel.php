@@ -30,7 +30,7 @@ class PayslipModel extends Model
      */
     public function forRun(int $payrollRunId, ?int $companyScope = null): array
     {
-        $builder = $this->select('payslips.*, users.name as user_name, departments.name as department_name')
+        $builder = $this->select('payslips.*, users.name as user_name, departments.name as department_name, employee_profiles.company_id as company_id')
             ->join('users', 'users.id = payslips.user_id')
             ->join('employee_profiles', 'employee_profiles.user_id = payslips.user_id', 'left')
             ->join('departments', 'departments.id = employee_profiles.department_id', 'left')

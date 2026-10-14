@@ -1,20 +1,45 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<?php if (! $employee && ! empty($onboardingCandidates)): ?>
+<div class="alert alert-info col-lg-8 small">
+    <strong>Completed onboarding candidates without an employee record:</strong>
+    <?php foreach ($onboardingCandidates as $c): ?>
+        <div class="d-flex align-items-center gap-2 mt-2">
+            <a href="<?= site_url('hr/onboarding/' . $c['id']) ?>"><?= esc($c['candidate_name']) ?></a>
+            <?php if (can('onboarding.edit') && can('employee.create')): ?>
+            <form action="<?= site_url('hr/onboarding/' . $c['id'] . '/create-employee') ?>" method="post" class="d-inline" data-erp-form="off">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-sm btn-primary py-0">Create Employee Record</button>
+            </form>
+            <?php endif; ?>
+        </div>
+    <?php endforeach; ?>
+    <div class="mt-2 text-muted">“Create Employee Record” creates (or links) the login and the employee profile from the candidate's onboarding details, then opens the profile so you can complete the remaining details.</div>
+</div>
+<?php endif; ?>
 <div class="card col-lg-8">
     <div class="card-body">
-        <form action="<?= $employee ? site_url('hr/employees/' . $employee['id']) : site_url('hr/employees') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Account &amp; Company" enctype="multipart/form-data" action="<?= $employee ? site_url('hr/employees/' . $employee['id']) : site_url('hr/employees') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">User</label>
-                    <select name="user_id" class="form-select" required <?= $employee ? 'disabled' : '' ?>>
-                        <option value="">Select user</option>
-                        <?php foreach ($users as $u): ?>
-                            <option value="<?= $u['id'] ?>" <?= (($employee['user_id'] ?? null) == $u['id']) ? 'selected' : '' ?>><?= esc($u['name']) ?> (<?= esc($u['email']) ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                    <?php if ($employee): ?><input type="hidden" name="user_id" value="<?= $employee['user_id'] ?>"><?php endif; ?>
+                    <?php if ($employee): ?>
+                        <input type="text" class="form-control" value="<?= esc(($employee['user_name'] ?? '') . (isset($employee['user_email']) ? ' (' . $employee['user_email'] . ')' : '')) ?>" disabled>
+                        <input type="hidden" name="user_id" value="<?= $employee['user_id'] ?>">
+                    <?php else: ?>
+                        <?php $oldUserId = (string) old('user_id', ''); $oldUserLabel = ''; ?>
+                        <datalist id="employeeUserList">
+                            <?php foreach ($users as $u): ?>
+                                <?php $uLabel = $u['name'] . ' (' . $u['email'] . ')'; if ((string) $u['id'] === $oldUserId) { $oldUserLabel = $uLabel; } ?>
+                                <option value="<?= esc($uLabel) ?>" data-id="<?= (int) $u['id'] ?>"></option>
+                            <?php endforeach; ?>
+                        </datalist>
+                        <input type="text" id="employeeUserInput" class="form-control" list="employeeUserList" autocomplete="off" placeholder="Type a name or email…" value="<?= esc($oldUserLabel) ?>" required>
+                        <input type="hidden" name="user_id" id="employeeUserId" value="<?= esc($oldUserId) ?>">
+                        <div class="form-text">Start typing — matching users appear as suggestions.</div>
+                    <?php endif; ?>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Employee Code</label>
@@ -30,6 +55,24 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Employee Photo</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <?php if (! empty($employee['user_avatar'])): ?>
+                            <img src="<?= base_url($employee['user_avatar']) ?>" alt="" class="rounded-circle" style="width:48px;height:48px;object-fit:cover;">
+                        <?php endif; ?>
+                        <input type="file" name="photo" id="employeePhotoInput" class="form-control" accept="image/png,image/jpeg,image/webp">
+                        <button type="button" id="employeePhotoClear" class="btn btn-outline-secondary btn-sm text-nowrap" hidden>Clear</button>
+                    </div>
+                    <?php if (! empty($employee['user_avatar'])): ?>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="remove_photo" value="1" id="employeeRemovePhoto">
+                            <label class="form-check-label small" for="employeeRemovePhoto">Remove current photo</label>
+                        </div>
+                    <?php endif; ?>
+                    <div class="form-text">Optional — JPG, PNG or WEBP, up to 2 MB.</div>
+                </div>
+                <div class="col-12 erp-section-marker" data-section-title="Employment Details"></div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Department</label>
                     <select name="department_id" class="form-select">
@@ -72,6 +115,7 @@
                     <label class="form-label">Date of Joining</label>
                     <input type="date" name="date_of_joining" class="form-control" value="<?= esc($employee['date_of_joining'] ?? '') ?>">
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Personal &amp; Emergency Contact"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Date of Birth</label>
                     <input type="date" name="date_of_birth" class="form-control" value="<?= esc($employee['date_of_birth'] ?? '') ?>" max="<?= date('Y-m-d') ?>">
@@ -94,6 +138,32 @@
         </form>
     </div>
 </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<style>#employeeUserInput::-webkit-calendar-picker-indicator { display: none !important; }</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // User picker: type-to-search (no dropdown list). The chosen suggestion's id goes into the hidden user_id.
+    var uIn = document.getElementById('employeeUserInput'), uId = document.getElementById('employeeUserId');
+    if (uIn && uId) {
+        var sync = function () {
+            var id = '';
+            document.querySelectorAll('#employeeUserList option').forEach(function (o) { if (o.value === uIn.value) { id = o.getAttribute('data-id'); } });
+            uId.value = id;
+            uIn.setCustomValidity(id || !uIn.value ? '' : 'Pick a user from the suggestions.');
+        };
+        uIn.addEventListener('input', sync);
+        uIn.addEventListener('change', sync);
+        sync();
+    }
+    // "Clear" un-picks a photo chosen in this form (before saving); the checkbox above removes the saved one.
+    var input = document.getElementById('employeePhotoInput'), clear = document.getElementById('employeePhotoClear');
+    if (!input || !clear) return;
+    input.addEventListener('change', function () { clear.hidden = !input.value; });
+    clear.addEventListener('click', function () { input.value = ''; clear.hidden = true; });
+});
+</script>
 <?= $this->endSection() ?>
 
 <?php if (! $employee): ?>

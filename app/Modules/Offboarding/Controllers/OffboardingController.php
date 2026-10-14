@@ -319,6 +319,10 @@ class OffboardingController extends BaseController
             return redirect()->to('/hr/offboarding/' . $id)->with('error', 'Only HR can view the relieving letter.');
         }
 
+        if (($templated = $this->templatedDocument('relieving_letter', $id, true)) !== null) {
+            return $templated;
+        }
+
         return view('App\Modules\Offboarding\relieving_letter', [
             'title'     => 'Relieving Letter — ' . $record['employee_name'],
             'record'    => $record,
@@ -341,6 +345,10 @@ class OffboardingController extends BaseController
         }
         if (! $this->isOwner()) {
             return redirect()->to('/hr/offboarding/' . $id)->with('error', 'Only HR can download the relieving letter.');
+        }
+
+        if (($templated = $this->templatedDocument('relieving_letter', $id, false)) !== null) {
+            return $templated;
         }
 
         $options = new Options();
@@ -428,6 +436,19 @@ class OffboardingController extends BaseController
             return redirect()->to('/hr/offboarding/' . $id)->with('error', 'Invalid stage.');
         }
 
+        // A completed or rescinded exit is final: re-opening it would leave the employee's status contradicting the record.
+        if (in_array($record['status'], ['exit_completed', OffboardingRecordModel::RESCINDED], true)) {
+            return redirect()->to('/hr/offboarding/' . $id)->with('error', 'This exit is closed and its stage can no longer be changed.');
+        }
+
+        // The exit can only be closed once every checklist item (assets, access, final settlement, ...) is done or skipped.
+        if ($status === 'exit_completed') {
+            $open = db_connect()->table('offboarding_tasks')->where('offboarding_record_id', $id)->whereNotIn('status', ['completed', 'skipped'])->countAllResults();
+            if ($open > 0) {
+                return redirect()->to('/hr/offboarding/' . $id)->with('error', 'Complete or skip the ' . $open . ' open checklist item(s) before closing the exit.');
+            }
+        }
+
         $data = ['status' => $status];
 
         if ($status === 'hr_approval' && $record['manager_reviewed_at'] === null) {
@@ -452,6 +473,12 @@ class OffboardingController extends BaseController
             $this->employeeModel->update($record['employee_profile_id'], [
                 'status' => $record['exit_type'] === 'termination' ? 'terminated' : 'resigned',
             ]);
+
+            // Access revocation: the leaver's login is switched off (history stays; Super Admin can re-activate it).
+            $leaver = $this->employeeModel->find($record['employee_profile_id']);
+            if ($leaver !== null) {
+                db_connect()->table('users')->where('id', (int) $leaver['user_id'])->update(['status' => 'inactive', 'updated_at' => date('Y-m-d H:i:s')]);
+            }
         }
 
         $employee = $this->employeeModel->withRelations($record['employee_profile_id']);

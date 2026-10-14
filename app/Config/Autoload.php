@@ -48,5 +48,5 @@ class Autoload extends AutoloadConfig
 
     public $files = [];
 
-    public array $helpers = ['url', 'form', 'text', 'array', 'permission', 'payroll', 'gst', 'company_code'];
+    public array $helpers = ['url', 'form', 'text', 'array', 'permission', 'payroll', 'gst', 'company_code', 'localization'];
 }

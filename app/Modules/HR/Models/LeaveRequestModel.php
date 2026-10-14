@@ -132,4 +132,18 @@ class LeaveRequestModel extends Model
             ->where('YEAR(leave_requests.start_date)', $year)
             ->first()['total'] ?? 0);
     }
+
+    /**
+     * Days in $year already taken or requested (pending + approved) on one leave type - what a new request has to fit
+     * into together with the type's annual quota. Keyed by start date's year, like approvedDaysThisYear().
+     */
+    public function committedDays(int $userId, int $leaveTypeId, int $year): float
+    {
+        return (float) ($this->selectSum('days')
+            ->where('user_id', $userId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->whereIn('status', ['pending', 'approved'])
+            ->where('YEAR(start_date)', $year)
+            ->first()['days'] ?? 0);
+    }
 }

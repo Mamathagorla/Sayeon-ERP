@@ -1,4 +1,5 @@
 /*
+ the current one
  * Sayeon ERP — shared premium theme layer.
  *
  * Loaded once from app/Views/layouts/main.php, after Bootstrap/AdminLTE
@@ -22,6 +23,7 @@
     --sy-surface: #ffffff;
     --sy-border: #e6eaef;
     --sy-border-soft: #eef1f5;
+    --sy-border-strong: #cfd6df;
     --sy-ink: #1f242c;
     /* Fixed white — for text/icons that sit on --sy-gradient-hero (the
        brand-red fill). */
@@ -563,6 +565,202 @@ a:hover .sy-attention-card { background: var(--sy-hover-bg); transform: translat
 .sy-msel-opt { flex: none; margin: 0; cursor: pointer; }
 .sy-msel-apply { margin-top: 6px; }
 
+/* ============ Design system: form controls ============
+   One set of rules for every select, input, checkbox, switch, date/time
+   field and filter control, so each module looks the same. Pure CSS: no
+   markup, JS or dependency changes. Colors come from the tokens above. */
+
+/* Selects: custom chevron in place of the browser's default arrow */
+.app-content .form-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238a929e' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right .7rem center;
+    background-size: 14px 14px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+.app-content .form-select option { color: var(--sy-ink); }
+
+/* Text inputs and selects: comfortable height, clear hover and focus states */
+.app-content .form-control,
+.app-content .form-select {
+    min-height: 2.5rem;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.app-content .form-control-sm,
+.app-content .form-select-sm {
+    min-height: 2.1rem;
+    padding-top: .3rem;
+    padding-bottom: .3rem;
+    font-size: .82rem;
+}
+.app-content textarea.form-control { min-height: 5rem; resize: vertical; }
+.app-content .form-control:hover:not(:disabled):not(:focus),
+.app-content .form-select:hover:not(:disabled):not(:focus) { border-color: var(--sy-border-strong); }
+.app-content .form-control:focus,
+.app-content .form-select:focus {
+    border-color: var(--sy-accent);
+    box-shadow: 0 0 0 3px var(--sy-accent-soft);
+    outline: none;
+}
+.app-content .form-control:disabled,
+.app-content .form-select:disabled,
+.app-content .form-control[readonly] {
+    background-color: var(--sy-subtle-bg);
+    color: var(--sy-muted);
+    cursor: not-allowed;
+}
+.app-content .form-text { color: var(--sy-muted); font-size: .76rem; }
+
+/* Filter bars: an active (non-"All") filter reads as selected at a glance.
+   The server marks the chosen option with the `selected` attribute and the
+   filter forms reload on change, so this state is always current. */
+.app-content .filter-form select:has(option[selected]:not([value=""])) {
+    border-color: var(--sy-accent);
+    background-color: var(--sy-accent-soft);
+    color: var(--sy-accent-ink);
+    font-weight: 600;
+}
+.app-content .filter-form { row-gap: .5rem; }
+
+/* Date and time fields: match the other inputs; picker icon stays visible */
+.app-content input[type="date"].form-control,
+.app-content input[type="time"].form-control,
+.app-content input[type="datetime-local"].form-control {
+    color-scheme: light;
+    font-variant-numeric: tabular-nums;
+}
+.app-content input[type="date"].form-control::-webkit-calendar-picker-indicator,
+.app-content input[type="time"].form-control::-webkit-calendar-picker-indicator,
+.app-content input[type="datetime-local"].form-control::-webkit-calendar-picker-indicator {
+    opacity: .55;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 2px;
+}
+.app-content input[type="date"].form-control:hover::-webkit-calendar-picker-indicator,
+.app-content input[type="time"].form-control:hover::-webkit-calendar-picker-indicator,
+.app-content input[type="datetime-local"].form-control:hover::-webkit-calendar-picker-indicator { opacity: 1; }
+
+/* Time fields: the browser paints the focused hour/minute/AM-PM segment and the
+   picker's selection in its own blue. Use the same neutral grey as the select
+   dropdowns instead. (The popup itself is drawn by the browser; accent-color is
+   the only hook it exposes, so its highlight follows the browser's support.) */
+.app-content input[type="time"].form-control { accent-color: var(--sy-secondary); }
+.app-content input[type="time"].form-control::-webkit-datetime-edit-hour-field:focus,
+.app-content input[type="time"].form-control::-webkit-datetime-edit-minute-field:focus,
+.app-content input[type="time"].form-control::-webkit-datetime-edit-ampm-field:focus {
+    background-color: var(--sy-border-strong);
+    color: var(--sy-ink);
+    outline: none;
+}
+
+/* Checkboxes, radios and switches: brand color instead of Bootstrap blue */
+.app-content .form-check-input {
+    border-color: var(--sy-border-strong);
+    cursor: pointer;
+}
+.app-content .form-check-input:checked {
+    background-color: var(--sy-accent-ink);
+    border-color: var(--sy-accent-ink);
+}
+.app-content .form-check-input:focus {
+    border-color: var(--sy-accent);
+    box-shadow: 0 0 0 3px var(--sy-accent-soft);
+}
+.app-content .form-switch .form-check-input { width: 2.4em; height: 1.3em; }
+.app-content .form-check-label { cursor: pointer; font-size: .87rem; color: var(--sy-ink); }
+
+/* Input groups: the addon matches the field beside it */
+.app-content .input-group-text {
+    background-color: var(--sy-subtle-bg);
+    border-color: var(--sy-border);
+    color: var(--sy-muted);
+    font-size: .85rem;
+}
+
+/* Logical form sections (opt-in): group related fields under a small
+   heading with a divider, and keep the save/cancel row at the end. */
+.sy-form-section { padding: 18px 0 4px; border-top: 1px solid var(--sy-border-soft); }
+.sy-form-section:first-child { padding-top: 0; border-top: 0; }
+.sy-form-section-title { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sy-muted); margin-bottom: 12px; }
+.sy-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--sy-border-soft); }
+
+/* Buttons: visible keyboard focus */
+.app-content .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--sy-accent-soft); }
+
+/* ============ Design system: overlays and menus ============ */
+
+/* Modals */
+.modal-content { border: 0; border-radius: var(--sy-radius); box-shadow: 0 24px 60px -20px rgba(20, 24, 32, .35); }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--sy-border-soft); }
+.modal-title { font-size: .98rem; font-weight: 700; }
+.modal-body { padding: 18px 20px; }
+.modal-footer { padding: 12px 20px; border-top: 1px solid var(--sy-border-soft); gap: 8px; }
+.modal-backdrop.show { opacity: .45; }
+
+/* Dropdown and action menus */
+.dropdown-menu {
+    border: 1px solid var(--sy-border);
+    border-radius: var(--sy-radius-sm);
+    box-shadow: 0 12px 32px -12px rgba(20, 24, 32, .25);
+    padding: 6px;
+    font-size: .86rem;
+}
+.dropdown-item { border-radius: 8px; padding: .45rem .75rem; font-weight: 500; }
+.dropdown-item.active, .dropdown-item:active { background-color: var(#e8edf4); color: var(--sy-accent-ink); }
+.dropdown-header { font-size: .68rem; text-transform: uppercase; letter-spacing: .5px; color: var(--sy-muted); font-weight: 700; padding: .4rem .75rem; }
+
+/* Pagination (plain Bootstrap and DataTables both use these classes) */
+.app-content .pagination { gap: 4px; flex-wrap: wrap; }
+.app-content .pagination .page-link {
+    border-radius: var(--sy-radius-pill) !important;
+    border: 1px solid var(--sy-border);
+    min-width: 2.2rem;
+    text-align: center;
+    padding: .35rem .75rem;
+    font-size: .82rem;
+    font-weight: 600;
+}
+.app-content .pagination .page-item:not(.active):not(.disabled) .page-link:hover {
+    background-color: var(--sy-accent-soft);
+    color: var(--sy-accent-ink);
+    border-color: transparent;
+}
+.app-content .pagination .page-item.active .page-link { box-shadow: var(--sy-shadow-accent); }
+
+/* DataTables controls: same field and pill styling as the rest of the app */
+.app-content .dataTables_wrapper { font-size: .85rem; }
+.app-content .dataTables_wrapper .dataTables_filter { margin-bottom: .75rem; }
+.app-content .dataTables_wrapper .dataTables_filter input {
+    border-radius: var(--sy-radius-pill);
+    padding-left: .9rem;
+    padding-right: .9rem;
+    min-width: 14rem;
+}
+.app-content .dataTables_wrapper .dataTables_info { color: var(--sy-muted); font-size: .8rem; padding-top: .9rem; }
+.app-content .dataTables_wrapper .dataTables_paginate { padding-top: .75rem; }
+
+/* ============ Design system: layout safety ============
+   Stops grid children and media from forcing a sideways scroll. Wide
+   tables keep their own scroll inside .table-responsive. */
+.app-content .row > * { min-width: 0; }
+.app-content img, .app-content video, .app-content canvas, .app-content svg { max-width: 100%; height: auto; }
+.app-content .table-responsive { border-radius: var(--sy-radius-sm); }
+
+@media (max-width: 575.98px) {
+    .modal-dialog { margin: .5rem; }
+    .modal-header, .modal-body, .modal-footer { padding-left: 16px; padding-right: 16px; }
+    .modal-footer .btn { flex: 1 1 auto; }
+    .app-content .dataTables_wrapper .dataTables_filter { text-align: left; }
+    .app-content .dataTables_wrapper .dataTables_filter input { min-width: 0; width: 100%; }
+    .sy-form-actions .btn { flex: 1 1 auto; }
+}
+
 /* ============ Global print reset ============
    layouts/main.php's .app-wrapper/.app-main-column are display:flex,
    pinned to one viewport (height:100vh/100dvh) with overflow:hidden —
@@ -587,3 +785,230 @@ a:hover .sy-attention-card { background: var(--sy-hover-bg); transform: translat
         display: none !important;
     }
 }
+
+/* ============ Modern dropdowns ============
+   One look for every dropdown: sort menus, filters, action (kebab) menus,
+   the multi-select filter and (where the browser supports customizable
+   selects) native <select> lists. Pure CSS on the existing Bootstrap
+   components: markup, JS, keyboard navigation and Popper positioning are
+   untouched. Hovered / keyboard-focused / selected rows share one
+   light-gray highlight. */
+:root {
+    --sy-menu-radius: 12px;
+    --sy-menu-shadow: 0 10px 30px -6px rgba(16, 24, 40, .16), 0 2px 8px rgba(16, 24, 40, .06);
+    --sy-menu-highlight: #f3f5f7;
+}
+.dropdown-menu {
+    --bs-dropdown-zindex: 1060;                 /* above sticky table headers, cards and the app header */
+    z-index: 1060;
+    min-width: 11rem;
+    max-width: calc(100vw - 1rem);
+    max-height: min(70vh, 26rem);
+    overflow-y: auto;
+    padding: 8px;
+    margin-top: 6px !important;
+    background: var(--sy-surface);
+    border: 1px solid var(--sy-border);
+    border-radius: var(--sy-menu-radius);
+    box-shadow: var(--sy-menu-shadow);
+    font-size: .92rem;
+}
+.dropdown-menu.show { animation: syMenuIn .12s ease-out; }
+@keyframes syMenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .dropdown-menu.show { animation: none; } }
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .6rem .85rem;
+    border-radius: 8px;
+    font-weight: 500;
+    color: var(--sy-ink);
+    transition: background-color .12s ease, color .12s ease;
+}
+.dropdown-item i, .dropdown-item .fas, .dropdown-item .far { width: 1rem; text-align: center; color: var(--sy-muted); }
+.dropdown-item:hover, .dropdown-item:focus, .dropdown-item:focus-visible,
+.dropdown-item.active, .dropdown-item:active, .dropdown-item[aria-current="true"] {
+    background-color: var(--sy-menu-highlight);
+    color: var(--sy-ink);
+    outline: none;
+}
+.dropdown-item.disabled, .dropdown-item:disabled { color: var(--sy-muted-soft); background: transparent; }
+.dropdown-item.text-danger:hover, .dropdown-item.text-danger:focus { background-color: var(--sy-danger-soft); color: var(--sy-danger); }
+.dropdown-item.text-danger i { color: inherit; }
+.dropdown-divider { margin: 6px 4px; border-color: var(--sy-border-soft); }
+.dropdown-header { padding: .5rem .85rem .3rem; }
+.dropdown-menu form { margin: 0; }
+.dropdown-menu form .dropdown-item { width: 100%; text-align: left; background: none; border: 0; }
+
+/* Trigger buttons: rounded, with a chevron that turns when open */
+.dropdown-toggle { border-radius: 10px; }
+.dropdown-toggle::after { transition: transform .15s ease; }
+.dropdown-toggle.show::after { transform: rotate(180deg); }
+
+/* Multi-select filter dropdown */
+.sy-msel-toggle { border-radius: 10px; }
+.sy-msel-menu { padding: 8px; min-width: 14rem; }
+.sy-msel-item { padding: .5rem .7rem; border-radius: 8px; }
+.sy-msel-item:hover, .sy-msel-item:focus-within { background: var(--sy-menu-highlight); }
+
+/* Header menus (user / notifications) keep the same highlight instead of the accent tint */
+.app-header .dropdown-item:hover, .app-header .dropdown-item:focus { background: var(--sy-menu-highlight); color: var(--sy-ink); }
+
+/* Inside a modal, menus must clear the dialog */
+.modal .dropdown-menu { z-index: 1080; }
+
+/* Native <select>: closed control and, where the browser allows it
+   (Chromium 135+ customizable selects), the open list in the same style.
+   Other browsers keep their own list; the closed control is still styled. */
+.app-content .form-select, .modal .form-select { border-radius: 10px; }
+@supports (appearance: base-select) {
+    .app-content select.form-select, .modal select.form-select { appearance: base-select; }
+    .app-content select.form-select::picker(select), .modal select.form-select::picker(select) {
+        appearance: base-select;
+        padding: 8px;
+        margin-top: 6px;
+        border: 1px solid var(--sy-border);
+        border-radius: var(--sy-menu-radius);
+        background: var(--sy-surface);
+        box-shadow: var(--sy-menu-shadow);
+    }
+    .app-content select.form-select::picker-icon, .modal select.form-select::picker-icon { display: none; }
+    .app-content select.form-select option, .modal select.form-select option {
+        padding: .6rem .85rem;
+        border-radius: 8px;
+        color: var(--sy-ink);
+        font-weight: 500;
+    }
+    .app-content select.form-select option:hover, .app-content select.form-select option:focus,
+    .app-content select.form-select option:checked,
+    .modal select.form-select option:hover, .modal select.form-select option:checked { background: var(--sy-menu-highlight); }
+    .app-content select.form-select option::checkmark, .modal select.form-select option::checkmark { display: none; }
+}
+
+/* "All Companies" switcher (topbar): same modern menu as every other dropdown. */
+.sy-company-chip { border-radius: 10px; transition: background-color .12s ease, border-color .12s ease; }
+.sy-company-chip:hover { background: var(--sy-menu-highlight); }
+.sy-company-chip select.form-select { cursor: pointer; min-width: 9rem; max-width: 16rem; text-overflow: ellipsis; }
+@supports (appearance: base-select) {
+    .sy-company-chip select.form-select { appearance: base-select; }
+    .sy-company-chip select.form-select::picker(select) {
+        appearance: base-select;
+        min-width: 14rem;
+        max-height: min(70vh, 26rem);
+        padding: 8px;
+        margin-top: 8px;
+        border: 1px solid var(--sy-border);
+        border-radius: var(--sy-menu-radius);
+        background: var(--sy-surface);
+        box-shadow: var(--sy-menu-shadow);
+    }
+    .sy-company-chip select.form-select::picker-icon { display: none; }
+    .sy-company-chip select.form-select option {
+        padding: .6rem .85rem;
+        border-radius: 8px;
+        color: var(--sy-ink);
+        font-size: .9rem;
+        font-weight: 500;
+    }
+    .sy-company-chip select.form-select option:hover,
+    .sy-company-chip select.form-select option:focus,
+    .sy-company-chip select.form-select option:checked { background: var(--sy-menu-highlight); }
+    .sy-company-chip select.form-select option::checkmark { display: none; }
+}
+
+/* ============ ERP calendar popup (assets/js/erp-calendar.js) ============ */
+.erp-cal {
+    position: fixed; z-index: 2200; width: 328px; max-width: calc(100vw - 16px);
+    padding: 14px 14px 12px; background: var(--sy-surface); color: var(--sy-ink);
+    border: 1px solid var(--sy-border); border-radius: 14px;
+    box-shadow: var(--sy-menu-shadow, 0 10px 30px -6px rgba(16, 24, 40, .16));
+    font-size: .92rem; user-select: none;
+}
+.erp-cal[hidden] { display: none; }
+.erp-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.erp-cal-title { font-weight: 600; font-size: 1rem; display: flex; gap: 2px; }
+.erp-cal-title button { border: 0; background: none; color: inherit; font: inherit; padding: 2px 8px; border-radius: 8px; cursor: pointer; }
+.erp-cal-title button:hover, .erp-cal-title button:focus-visible { background: var(--sy-accent-soft); color: var(--sy-accent-ink); outline: none; }
+.erp-cal-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 232px; overflow-y: auto; }
+.erp-cal-picker button { border: 0; background: transparent; padding: 10px 0; border-radius: 8px; font-size: .9rem; color: inherit; }
+.erp-cal-picker button:hover:not(:disabled), .erp-cal-picker button:focus-visible { background: var(--sy-accent-soft); color: var(--sy-accent-ink); outline: none; }
+.erp-cal-picker button.is-current { box-shadow: inset 0 0 0 1.5px var(--sy-accent); }
+.erp-cal-picker button:disabled { opacity: .35; cursor: not-allowed; }
+.erp-cal-nav {
+    width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: var(--sy-ink);
+    display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; cursor: pointer;
+}
+.erp-cal-nav:hover, .erp-cal-nav:focus-visible { background: var(--sy-menu-highlight, #f3f5f7); outline: none; }
+.erp-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.erp-cal-dow { text-align: center; font-weight: 700; font-size: .82rem; padding: 6px 0 8px; }
+.erp-cal-day {
+    aspect-ratio: 1 / 1; min-height: 38px; border: 0; border-radius: 8px; padding: 0;
+    background: var(--sy-menu-highlight, #f3f5f7); color: var(--sy-ink); font-weight: 500; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color .12s ease, color .12s ease;
+}
+.erp-cal-day.is-out { color: var(--sy-muted-soft); background: transparent; }
+.erp-cal-day:hover:not(:disabled), .erp-cal-day:focus-visible { background: var(--sy-accent-soft); color: var(--sy-accent-ink); outline: none; }
+.erp-cal-day.in-range { background: var(--sy-accent-soft); color: var(--sy-accent-ink); }
+.erp-cal-day.is-today { box-shadow: inset 0 0 0 1.5px var(--sy-accent); }
+.erp-cal-day.is-selected, .erp-cal-day.is-selected:hover {
+    background: var(--sy-accent); color: var(--sy-hero-ink, #fff); border-radius: 50%; font-weight: 700; box-shadow: none;
+}
+.erp-cal-day:disabled { opacity: .35; cursor: not-allowed; }
+.erp-cal-day[data-readonly] { cursor: default; }
+.erp-cal-foot { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--sy-border-soft); }
+.erp-cal-foot button { border: 0; background: none; color: var(--sy-accent-ink); font-weight: 600; font-size: .85rem; padding: 4px 8px; border-radius: 8px; }
+.erp-cal-foot button:hover { background: var(--sy-menu-highlight, #f3f5f7); }
+/* Date inputs and the dashboard chip behave like buttons */
+input[type=date] { cursor: pointer; }
+button.sy-week-chip { cursor: pointer; }
+button.sy-week-chip:hover { background: var(--sy-menu-highlight, #f3f5f7); }
+
+/* ============ Form navigation: breadcrumbs, steps, required markers ============ */
+.erp-crumbs { margin: 0 0 .35rem; padding: 0; font-size: .92rem; background: none; }
+.erp-crumbs .breadcrumb-item a { color: var(--sy-muted); text-decoration: none; }
+.erp-crumbs .breadcrumb-item a:hover { color: var(--sy-ink); }
+.erp-crumbs .breadcrumb-item.active { color: var(--sy-muted); }
+.erp-crumbs .breadcrumb-item { display: flex; align-items: center; }
+/* Drawn chevron (not a text glyph) so the ">" sits exactly on the text's vertical centre. */
+.erp-crumbs .breadcrumb-item + .breadcrumb-item::before { content: ""; float: none; flex: none; width: .4em; height: .4em; margin: 0 .2em 0 .1em; border-top: 1.5px solid var(--sy-muted-soft); border-right: 1.5px solid var(--sy-muted-soft); transform: rotate(45deg); padding: 0; }
+
+/* required-field marker */
+label.erp-req::after { content: " *"; color: var(--sy-danger); font-weight: 700; }
+
+/* ============ Forms: one card, sections stacked inside it ============ */
+.app-content > .container-fluid > .card.erp-form-card {
+    width: 100% !important; max-width: 980px !important; flex: 0 0 auto !important;
+    margin-left: auto !important; margin-right: auto !important;
+}
+.app-content > .container-fluid > .card.erp-form-card--compact { max-width: 640px !important; }
+.erp-form-card > .card-body { padding: 1.75rem 2rem; }
+.erp-form-card .form-label { margin-bottom: .3rem; }
+.erp-form-card .form-control, .erp-form-card .form-select, .erp-form-card textarea { min-width: 0; width: 100%; }
+.erp-form-card .form-text { overflow-wrap: anywhere; }
+.erp-sections { display: block; }
+.erp-section + .erp-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--sy-border-soft); }
+.erp-section-head { margin-bottom: 1rem; }
+.erp-section-title { font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--sy-ink); }
+.erp-section-note { font-size: .8rem; color: var(--sy-muted); margin-top: .15rem; }
+.erp-section > .erp-section-body > h6:first-child { margin-top: 0; }
+.erp-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .6rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--sy-border-soft); }
+.erp-form-actions .btn { border-radius: 10px; font-weight: 600; min-width: 96px; }
+@media (max-width: 575.98px) { .erp-form-card > .card-body { padding: 1.25rem 1rem; } .erp-form-actions .btn { flex: 1 1 auto; } }
+/* in the in-page form modal the card chrome disappears */
+body.erp-embed .erp-section + .erp-section { margin-top: 1.25rem; padding-top: 1.25rem; }
+body.erp-embed .erp-form-actions { display: none; }
+
+/* ============ Row actions: three-dots menu (assets/js/erp-actions.js) ============ */
+.erp-row-actions { display: inline-block; }
+.erp-kebab {
+    width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--sy-surface); color: var(--sy-ink); border: 1px solid var(--sy-border); border-radius: 10px;
+    cursor: pointer; transition: background-color .12s ease, border-color .12s ease;
+}
+.erp-kebab:hover, .erp-kebab.show, .erp-kebab:focus-visible { background: var(--sy-menu-highlight, #f3f5f7); border-color: var(--sy-border-strong); outline: none; }
+.erp-kebab::after { display: none; }
+.erp-row-actions .dropdown-menu { min-width: 10rem; text-align: left; }
+.erp-row-actions .dropdown-item span { white-space: nowrap; }

@@ -51,9 +51,6 @@ $qs = static function (array $overrides) use ($filter, $search, $sort, $from, $t
 };
 ?>
 
-<?= $this->section('pageActions') ?>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
 <style>
@@ -85,20 +82,41 @@ $qs = static function (array $overrides) use ($filter, $search, $sort, $from, $t
     .sy-todo-addform.open { display: flex; }
     .sy-todo-addform .field-title { flex: 1 1 220px; }
     .sy-todo-addform label { font-size: .76rem; font-weight: 600; color: var(--sy-muted); margin-bottom: 2px; display: block; }
+
+    /* Dropdowns on this page: soft border, custom arrow, neutral focus ring.
+       Overrides the red "active filter" highlight for these selects only. */
+    .sy-todo-filters .form-label { font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sy-muted); margin-bottom: 6px; }
+    .app-content .sy-todo-select.form-select {
+        padding: .3rem 2.3rem .3rem .85rem;
+        border: 1px solid var(--sy-border);
+        border-radius: 10px;
+        background-color: var(--sy-surface);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238a929e' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+        background-position: right .75rem center;
+        background-size: 14px 14px;
+        background-repeat: no-repeat;
+        color: var(--sy-ink);
+        font-size: .84rem;
+        font-weight: 500;
+        box-shadow: none;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .app-content .sy-todo-select.form-select:hover:not(:focus) { border-color: var(--sy-border-strong); }
+    .app-content .sy-todo-select.form-select:focus { border-color: var(--sy-ink); box-shadow: 0 0 0 3px rgba(31, 36, 44, .08); outline: none; }
+    .app-content .sy-todo-filters .filter-form select.sy-todo-select:has(option[selected]:not([value=""])) { border-color: var(--sy-border); background-color: var(--sy-surface); color: var(--sy-ink); font-weight: 500; }
 </style>
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-    <p class="text-muted mb-0">Stay organized, track your to-dos and get things done.</p>
-    <span class="sy-week-chip"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc(date('D, d/m/Y')) ?></span>
+<div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
+    <button type="button" class="sy-week-chip" data-erp-calendar="<?= date('Y-m-d') ?>" aria-haspopup="dialog"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc(date('D') . ', ' . erp_date(date('Y-m-d'))) ?></button>
 </div>
 
 <!-- All filters, above the list -->
-<div class="sy-card mb-3">
+<div class="sy-card mb-3 sy-todo-filters">
     <div class="sy-card-body">
         <form method="get" action="<?= site_url('todos') ?>" class="row g-2 align-items-end filter-form">
             <div class="col-6 col-md-2">
                 <label class="form-label small mb-1">Status</label>
-                <select name="filter" class="form-select form-select-sm" onchange="this.form.submit()">
+                <select name="filter" class="form-select form-select-sm sy-todo-select" onchange="this.form.submit()">
                     <?php foreach ($statusGroups as $groupLabel => $options): ?>
                         <optgroup label="<?= esc($groupLabel) ?>">
                             <?php foreach ($options as $key => $optLabel): ?>
@@ -117,7 +135,7 @@ $qs = static function (array $overrides) use ($filter, $search, $sort, $from, $t
             </div>
             <div class="col-6 col-md-2">
                 <label class="form-label small mb-1">Sort By</label>
-                <select name="sort" class="form-select form-select-sm">
+                <select name="sort" class="form-select form-select-sm sy-todo-select">
                     <?php foreach ($sortLabels as $k => $sLabel): ?>
                         <option value="<?= $k ?>" <?= $sort === $k ? 'selected' : '' ?>><?= esc($sLabel) ?></option>
                     <?php endforeach; ?>
@@ -132,7 +150,6 @@ $qs = static function (array $overrides) use ($filter, $search, $sort, $from, $t
                 <input type="date" name="to" class="form-control form-control-sm" value="<?= esc($to) ?>">
             </div>
             <div class="col-12 d-flex gap-3 align-items-center">
-                <button type="submit" class="btn btn-outline-secondary btn-sm">Apply Filters</button>
                 <?php if ($sort !== 'default' || $from !== '' || $to !== '' || $search !== '' || $filter !== 'all'): ?>
                     <a href="<?= site_url('todos') ?>" class="sy-todo-clear small fw-semibold text-decoration-none"><i class="fas fa-rotate-left me-1"></i>Clear all filters</a>
                 <?php endif; ?>
@@ -159,7 +176,7 @@ $qs = static function (array $overrides) use ($filter, $search, $sort, $from, $t
             </div>
             <div>
                 <label for="syTodoAddPriority">Priority</label>
-                <select name="priority" id="syTodoAddPriority" class="form-select form-select-sm">
+                <select name="priority" id="syTodoAddPriority" class="form-select form-select-sm sy-todo-select">
                     <option value="normal" selected>Normal</option>
                     <option value="important">Important</option>
                 </select>
@@ -234,7 +251,7 @@ $qs = static function (array $overrides) use ($filter, $search, $sort, $from, $t
                         <div class="text-muted small <?= $isSub ? 'sy-todo-indent' : '' ?>"><?= esc(mb_strimwidth($t['description'], 0, 70, '…')) ?></div>
                         <?php endif; ?>
                         <?php if ($t['due_date']): ?>
-                        <div class="text-muted small <?= $isSub ? 'sy-todo-indent' : '' ?>"><i class="far fa-calendar me-1"></i><span class="<?= $overdue ? 'text-danger fw-semibold' : '' ?>">Due <?= esc(date('d/m/Y', strtotime($t['due_date']))) ?></span></div>
+                        <div class="text-muted small <?= $isSub ? 'sy-todo-indent' : '' ?>"><i class="far fa-calendar me-1"></i><span class="<?= $overdue ? 'text-danger fw-semibold' : '' ?>">Due <?= esc(erp_date($t['due_date'])) ?></span></div>
                         <?php endif; ?>
                     </td>
                     <td><span class="badge bg-<?= $isImportant ? 'danger' : 'success' ?>"><?= $isImportant ? 'Important' : 'Normal' ?></span></td>

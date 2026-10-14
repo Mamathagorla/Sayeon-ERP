@@ -78,7 +78,8 @@ class InvoiceModel extends Model
             ->join('countries', 'countries.id = invoices.customer_country_id', 'left')
             ->join('states', 'states.id = invoices.customer_state_id', 'left');
 
-        if (! empty($filters['company_id'])) {
+        // array_key_exists, not empty(): 0 = "viewer has no company yet" must match zero rows, not every company.
+        if (array_key_exists('company_id', $filters) && $filters['company_id'] !== null && $filters['company_id'] !== '') {
             $builder->where('invoices.company_id', $filters['company_id']);
         }
         if (! empty($filters['status'])) {

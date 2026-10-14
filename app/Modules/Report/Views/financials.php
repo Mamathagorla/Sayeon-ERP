@@ -36,28 +36,28 @@
 
 <div class="row g-3 mb-3">
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-success"><?= number_format($cashIn, 2) ?></div><div class="text-muted small">Revenue Collected</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-success"><?= erp_number($cashIn, 2) ?></div><div class="text-muted small">Revenue Collected</div></div></div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-danger"><?= number_format($cashOut, 2) ?></div><div class="text-muted small">Bills Paid</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-danger"><?= erp_number($cashOut, 2) ?></div><div class="text-muted small">Bills Paid</div></div></div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($periodExpenses, 2) ?></div><div class="text-muted small">Operating Expenses</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($periodExpenses, 2) ?></div><div class="text-muted small">Operating Expenses</div></div></div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold <?= $netProfitLoss >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($netProfitLoss, 2) ?></div><div class="text-muted small">Net Profit / Loss</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold <?= $netProfitLoss >= 0 ? 'text-success' : 'text-danger' ?>"><?= erp_number($netProfitLoss, 2) ?></div><div class="text-muted small">Net Profit / Loss</div></div></div>
     </div>
 </div>
 
 <div class="row g-3">
     <div class="col-md-4">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($netCashFlow, 2) ?></div><div class="text-muted small">Net Cash Flow</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($netCashFlow, 2) ?></div><div class="text-muted small">Net Cash Flow</div></div></div>
     </div>
     <div class="col-md-4">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($outstandingReceivables, 2) ?></div><div class="text-muted small">Outstanding Receivables</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($outstandingReceivables, 2) ?></div><div class="text-muted small">Outstanding Receivables</div></div></div>
     </div>
     <div class="col-md-4">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($outstandingPayables, 2) ?></div><div class="text-muted small">Outstanding Payables</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($outstandingPayables, 2) ?></div><div class="text-muted small">Outstanding Payables</div></div></div>
     </div>
 </div>
 <?= $this->endSection() ?>

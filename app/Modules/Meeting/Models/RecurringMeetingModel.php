@@ -27,9 +27,100 @@ class RecurringMeetingModel extends Model
     protected $returnType    = 'array';
     protected $allowedFields = [
         'company_id', 'title', 'agenda', 'location', 'meeting_link', 'start_time', 'end_time',
+        'ends_next_day', 'timezone',
         'frequency', 'start_date', 'end_type', 'end_date', 'occurrences_total',
         'occurrences_generated', 'next_generation_date', 'status', 'created_by',
     ];
+
+    // Hard ceiling on how far ahead the upcoming-date scan will walk
+    // (a daily template started years ago would otherwise need thousands
+    // of steps to reach today). Far above any real backlog.
+    private const MAX_SCAN_STEPS = 10000;
+
+    /**
+     * Validates a template's time window. Times arrive as "HH:MM" from
+     * <input type="time"> (always 24-hour, whatever the browser displays).
+     * An overnight meeting must be ticked explicitly: without ends_next_day
+     * the end must be strictly after the start; with it, the end must be
+     * strictly before the start (the meeting finishes the following day).
+     * Returns a user-facing error, or null when the window is valid.
+     */
+    public function timeRangeError(?string $start, ?string $end, bool $endsNextDay): ?string
+    {
+        if ($start === null && $end === null) {
+            return $endsNextDay ? 'Set a start and end time to use "Ends the next day".' : null;
+        }
+        if ($start === null || $end === null) {
+            return 'Set both a start and an end time, or leave both empty.';
+        }
+
+        $startMin = self::minutes($start);
+        $endMin   = self::minutes($end);
+
+        if ($endsNextDay) {
+            return $endMin < $startMin
+                ? null
+                : '"Ends the next day" needs an end time earlier than the start time (for example 11:30 PM to 12:30 AM).';
+        }
+
+        return $endMin > $startMin
+            ? null
+            : 'End time must be after start time. If the meeting runs past midnight, tick "Ends the next day".';
+    }
+
+    public static function minutes(string $hhmm): int
+    {
+        [$h, $m] = array_map('intval', explode(':', substr($hhmm, 0, 5)));
+
+        return $h * 60 + $m;
+    }
+
+    /**
+     * The template's wall-clock time in the organization's time format. A
+     * template time is not tied to a date, so it is shown as entered (not
+     * converted to the viewer's timezone).
+     */
+    public static function formatTime(?string $time): string
+    {
+        return erp_time($time);
+    }
+
+    /**
+     * The next occurrence date that has not been generated yet and is not
+     * before today, walking the schedule forward from the last-generated
+     * pointer. Respects the template's end (occurrence cap or end date).
+     * Returns null for templates that are cancelled/completed, or whose
+     * schedule has no more occurrences. This is what the list shows as
+     * "Next Occurrence", so it stays correct even when the daily generator
+     * has not run recently or a template's pointer is behind.
+     */
+    public function nextOccurrenceDate(array $template, ?string $today = null): ?string
+    {
+        if (! in_array($template['status'], ['active', 'paused'], true) || $template['next_generation_date'] === null) {
+            return null;
+        }
+
+        $today  = $today ?? date('Y-m-d');
+        $date   = $template['next_generation_date'];
+        $number = (int) $template['occurrences_generated'] + 1;
+
+        for ($step = 0; $date < $today; $step++) {
+            if ($step >= self::MAX_SCAN_STEPS) {
+                return null;
+            }
+            $date = $this->advanceDate($date, $template['frequency']);
+            $number++;
+        }
+
+        if ($template['end_type'] === 'occurrences' && $template['occurrences_total'] !== null && $number > (int) $template['occurrences_total']) {
+            return null;
+        }
+        if ($template['end_type'] === 'end_date' && $template['end_date'] !== null && $date > $template['end_date']) {
+            return null;
+        }
+
+        return $date;
+    }
 
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';

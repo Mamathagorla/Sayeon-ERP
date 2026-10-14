@@ -3,10 +3,10 @@
 <?= $this->section('content') ?>
 <div class="row g-3 mb-3">
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($outstandingReceivables, 2) ?></div><div class="text-muted small">Outstanding Receivables</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($outstandingReceivables, 2) ?></div><div class="text-muted small">Outstanding Receivables</div></div></div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($outstandingPayables, 2) ?></div><div class="text-muted small">Outstanding Payables</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($outstandingPayables, 2) ?></div><div class="text-muted small">Outstanding Payables</div></div></div>
     </div>
     <div class="col-md-3">
         <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold text-danger"><?= $overdueInvoiceCount ?></div><div class="text-muted small">Overdue Invoices</div></div></div>

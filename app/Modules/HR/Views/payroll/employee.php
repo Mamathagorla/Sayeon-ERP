@@ -1,14 +1,22 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/payroll') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Payroll</a>
 <a href="<?= site_url('hr/payroll/structure/' . $employee['user_id']) ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-sliders me-1"></i>View Salary Structure</a>
 <a href="#payslipHistory" class="btn btn-outline-secondary btn-sm"><i class="fas fa-receipt me-1"></i>View Payslips</a>
+<div class="dropdown d-inline-block">
+    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-file-pdf me-1"></i>Documents</button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <?= view('App\\Modules\\Document\\partials/doc_workflow_menu', [
+            'workflow'  => 'payroll',
+            'companyId' => (int) ($employee['company_id'] ?? \App\Modules\Document\Services\DocumentAvailability::shared()->companyOfUser((int) $employee['user_id'])),
+            'context'   => ['payslip' => ! empty($payslips) ? (int) $payslips[0]['id'] : 0, 'salary_structure' => (int) ($structure['id'] ?? 0)],
+            'emptyText' => 'No payroll documents are active for this company yet.',
+        ]) ?>
+    </ul>
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-
-<div class="sy-pf-crumb"><a href="<?= site_url('hr/payroll') ?>"><i class="fas fa-arrow-left me-1"></i>Back to Payroll</a></div>
 
 <!-- Employee header -->
 <div class="sy-card sy-pf-head mb-3" style="height:auto">
@@ -39,14 +47,14 @@
             <p class="text-muted small mb-0">No salary structure has been set up for this employee yet. <a href="<?= site_url('hr/payroll/structure/' . $employee['user_id']) ?>">Set one up</a>.</p>
         <?php else: ?>
             <div class="row g-3">
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Basic Salary</span><span class="v"><?= number_format((float) $structure['basic'], 2) ?></span></div></div>
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">HRA</span><span class="v"><?= number_format((float) $structure['hra'], 2) ?></span></div></div>
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Allowances</span><span class="v"><?= number_format((float) $structure['allowances'], 2) ?></span></div></div>
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Gross Salary</span><span class="v"><?= number_format($gross, 2) ?></span></div></div>
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Deductions</span><span class="v"><?= number_format((float) $structure['deductions'], 2) ?></span></div></div>
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Net Salary</span><span class="v"><?= number_format($net, 2) ?></span></div></div>
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">CTC (Annual)</span><span class="v"><?= number_format($ctc, 2) ?></span></div></div>
-                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Effective From</span><span class="v"><?= esc(date('d/m/Y', strtotime($structure['effective_from']))) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Basic Salary</span><span class="v"><?= erp_number((float) $structure['basic'], 2) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">HRA</span><span class="v"><?= erp_number((float) $structure['hra'], 2) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Allowances</span><span class="v"><?= erp_number((float) $structure['allowances'], 2) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Gross Salary</span><span class="v"><?= erp_number($gross, 2) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Deductions</span><span class="v"><?= erp_number((float) $structure['deductions'], 2) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Net Salary</span><span class="v"><?= erp_number($net, 2) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">CTC (Annual)</span><span class="v"><?= erp_number($ctc, 2) ?></span></div></div>
+                <div class="col-6 col-md-3"><div class="sy-pf-row"><span class="k">Effective From</span><span class="v"><?= esc(erp_date($structure['effective_from'])) ?></span></div></div>
             </div>
         <?php endif; ?>
     </div>
@@ -66,11 +74,11 @@
             <?php foreach ($payslips as $p): ?>
                 <tr>
                     <td><?= esc($months[$p['month']] . ' ' . $p['year']) ?></td>
-                    <td class="text-end"><?= number_format((float) $p['gross'], 2) ?></td>
-                    <td class="text-end"><?= number_format((float) $p['deductions'], 2) ?></td>
-                    <td class="text-end fw-semibold"><?= number_format((float) $p['net'], 2) ?></td>
+                    <td class="text-end"><?= erp_number((float) $p['gross'], 2) ?></td>
+                    <td class="text-end"><?= erp_number((float) $p['deductions'], 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number((float) $p['net'], 2) ?></td>
                     <td><span class="badge bg-<?= $p['run_status'] === 'paid' ? 'success' : 'warning' ?>"><?= esc(ucfirst($p['run_status'])) ?></span></td>
-                    <td><a href="<?= site_url('hr/payroll/payslip/' . $p['id']) ?>">Payslip</a></td>
+                    <td><?php if (\App\Modules\Document\Services\DocumentAvailability::shared()->has('payslip', (int) ($employee['company_id'] ?? \App\Modules\Document\Services\DocumentAvailability::shared()->companyOfUser((int) $employee['user_id'])))): ?><a href="<?= site_url('hr/payroll/payslip/' . $p['id']) ?>">Payslip</a><?php else: ?><span class="text-muted small" title="No payslip template is active for this company">—</span><?php endif; ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

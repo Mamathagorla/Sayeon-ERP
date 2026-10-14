@@ -8,7 +8,6 @@
 </form>
 <a href="<?= site_url('recurring-meetings/create') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>New Recurring Meeting</a>
 <?php endif; ?>
-<a href="<?= site_url('meetings') ?>" class="btn btn-light btn-sm">Back to Meetings</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -61,7 +60,17 @@
                     <td class="fw-semibold"><?= esc($t['title']) ?></td>
                     <td class="text-muted small"><?= esc($t['company_name']) ?></td>
                     <td class="text-muted small"><?= esc(ucfirst($t['frequency'])) ?></td>
-                    <td class="text-muted small"><?= $t['next_generation_date'] ? esc(date('d/m/Y', strtotime($t['next_generation_date']))) : '—' ?></td>
+                    <td class="text-muted small">
+                        <?php if ($t['next_occurrence']): ?>
+                            <?= esc(erp_date($t['next_occurrence'])) ?>
+                            <?php if ($t['start_time']): ?>
+                                <br><?= esc(\App\Modules\Meeting\Models\RecurringMeetingModel::formatTime($t['start_time'])) ?><?= $t['end_time'] ? ' – ' . esc(\App\Modules\Meeting\Models\RecurringMeetingModel::formatTime($t['end_time'])) : '' ?><?= $t['ends_next_day'] ? ' (ends next day)' : '' ?>
+                            <?php endif; ?>
+                            <?php if ($t['status'] === 'paused'): ?><br><span class="badge bg-warning text-dark">paused</span><?php endif; ?>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <?php $statusColors = ['active' => 'success', 'paused' => 'warning text-dark', 'completed' => 'secondary', 'cancelled' => 'danger']; ?>
                         <span class="badge bg-<?= $statusColors[$t['status']] ?>"><?= esc(ucfirst($t['status'])) ?></span>

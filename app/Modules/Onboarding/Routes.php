@@ -31,7 +31,24 @@ $routes->group('hr/onboarding', ['namespace' => 'App\Modules\Onboarding\Controll
     $routes->post('phases/(:num)/move-up', 'OnboardingPhaseController::moveUp/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->post('phases/(:num)/move-down', 'OnboardingPhaseController::moveDown/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->post('phases/(:num)/delete', 'OnboardingPhaseController::destroy/$1', ['filter' => 'permission:onboarding.delete']);
+    // Role-specific question sets for the candidate form (and the matching
+    // HR evaluation criteria). HR / Super Admin only - enforced in the
+    // controller on top of this permission filter, like phases above.
+    $routes->get('role-groups', 'OnboardingRoleGroupController::index', ['filter' => 'permission:onboarding.edit']);
+    $routes->get('role-groups/create', 'OnboardingRoleGroupController::create', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups', 'OnboardingRoleGroupController::store', ['filter' => 'permission:onboarding.edit']);
+    $routes->get('role-groups/(:num)/edit', 'OnboardingRoleGroupController::edit/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups/(:num)', 'OnboardingRoleGroupController::update/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups/(:num)/clone', 'OnboardingRoleGroupController::cloneForCompany/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups/(:num)/delete', 'OnboardingRoleGroupController::destroy/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups/(:num)/questions', 'OnboardingRoleGroupController::saveQuestion/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups/(:num)/questions/(:num)/delete', 'OnboardingRoleGroupController::deleteQuestion/$1/$2', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups/(:num)/criteria', 'OnboardingRoleGroupController::saveCriterion/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('role-groups/(:num)/criteria/(:num)/delete', 'OnboardingRoleGroupController::deleteCriterion/$1/$2', ['filter' => 'permission:onboarding.edit']);
     $routes->get('(:num)', 'OnboardingController::show/$1', ['filter' => 'permission:onboarding.view']);
+    // Everything the candidate submitted + HR's structured evaluation.
+    $routes->get('(:num)/candidate-details', 'OnboardingCandidateController::show/$1', ['filter' => 'permission:onboarding.view']);
+    $routes->post('(:num)/evaluation', 'OnboardingCandidateController::saveEvaluation/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->get('(:num)/offer-letter', 'OnboardingController::offerLetter/$1', ['filter' => 'permission:onboarding.view']);
     $routes->get('(:num)/offer-letter/pdf', 'OnboardingController::offerLetterPdf/$1', ['filter' => 'permission:onboarding.view']);
     $routes->get('(:num)/joining-letter', 'OnboardingController::joiningLetter/$1', ['filter' => 'permission:onboarding.view']);
@@ -40,6 +57,7 @@ $routes->group('hr/onboarding', ['namespace' => 'App\Modules\Onboarding\Controll
     $routes->post('(:num)', 'OnboardingController::update/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->post('(:num)/status', 'OnboardingController::updateStatus/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->post('(:num)/link-employee', 'OnboardingController::linkEmployee/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('(:num)/create-employee', 'OnboardingController::createEmployee/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->post('(:num)/send-link', 'OnboardingController::sendLink/$1', ['filter' => 'permission:onboarding.edit']);
     // Secure candidate portal — generates/(re)sends the token-based link
     // and reviews what the candidate submitted through it. Distinct from
@@ -47,6 +65,14 @@ $routes->group('hr/onboarding', ['namespace' => 'App\Modules\Onboarding\Controll
     // had a real ERP login linked (see OnboardingController::sendLink()'s
     // own docblock) — this is for the pre-hire stage that has none.
     $routes->post('(:num)/send-portal-link', 'OnboardingController::sendPortalLink/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('(:num)/select', 'OnboardingController::selectCandidate/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('(:num)/start-review', 'OnboardingController::startReview/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('(:num)/send-offer', 'OnboardingController::sendOffer/$1', ['filter' => 'permission:onboarding.edit']);
+    // Opening these action URLs directly (a stale "Return & continue" link, a refresh) is harmless: back to the record.
+    $routes->get('(:num)/send-offer', static fn (int $id) => redirect()->to('/hr/onboarding/' . $id), ['filter' => 'permission:onboarding.view']);
+    $routes->get('(:num)/send-joining-letter', static fn (int $id) => redirect()->to('/hr/onboarding/' . $id), ['filter' => 'permission:onboarding.view']);
+    $routes->post('(:num)/send-joining-letter', 'OnboardingController::sendJoiningLetter/$1', ['filter' => 'permission:onboarding.edit']);
+    $routes->post('(:num)/withdraw', 'OnboardingController::withdraw/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->post('(:num)/verification/review', 'OnboardingController::reviewVerification/$1', ['filter' => 'permission:onboarding.edit']);
     $routes->post('(:num)/delete', 'OnboardingController::destroy/$1', ['filter' => 'permission:onboarding.delete']);
     $routes->post('(:num)/tasks/(:num)', 'OnboardingTaskController::update/$1/$2', ['filter' => 'permission:onboarding.edit']);
@@ -61,7 +87,12 @@ $routes->group('hr/onboarding', ['namespace' => 'App\Modules\Onboarding\Controll
 $routes->group('onboarding/portal', ['namespace' => 'App\Modules\Onboarding\Controllers'], static function ($routes) {
     $routes->get('(:num)/(:segment)', 'OnboardingPortalController::show/$1/$2');
     $routes->post('(:num)/(:segment)/verify', 'OnboardingPortalController::submitVerification/$1/$2');
+    $routes->post('(:num)/(:segment)/save', 'OnboardingPortalController::saveDraft/$1/$2');
+    $routes->post('(:num)/(:segment)/documents', 'OnboardingPortalController::uploadDocument/$1/$2');
+    $routes->post('(:num)/(:segment)/documents/(:num)/delete', 'OnboardingPortalController::deleteDocument/$1/$2/$3');
     $routes->post('(:num)/(:segment)/offer-response', 'OnboardingPortalController::respondToOffer/$1/$2');
     $routes->get('(:num)/(:segment)/offer-letter', 'OnboardingPortalController::offerLetter/$1/$2');
     $routes->get('(:num)/(:segment)/offer-letter/pdf', 'OnboardingPortalController::offerLetterPdf/$1/$2');
+    $routes->get('(:num)/(:segment)/joining-letter', 'OnboardingPortalController::joiningLetter/$1/$2');
+    $routes->get('(:num)/(:segment)/joining-letter/pdf', 'OnboardingPortalController::joiningLetterPdf/$1/$2');
 });

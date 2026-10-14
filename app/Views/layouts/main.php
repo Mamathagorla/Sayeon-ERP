@@ -1,3 +1,4 @@
+<?php $embed = (service('request')->getGet('embed') === '1'); ?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -17,6 +18,7 @@
          --sy-navy/--sy-teal tokens and any page's own `styles` section
          still win where they overlap. -->
     <link rel="stylesheet" href="<?= base_url('assets/css/sayeon-theme.css') ?>?v=<?= @filemtime(FCPATH . 'assets/css/sayeon-theme.css') ?: 1 ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/erp-forms.css') ?>?v=<?= @filemtime(FCPATH . 'assets/css/erp-forms.css') ?: 1 ?>">
     <style>
         /* AdminLTE 4.0.0-beta3's own layout relies on .app-wrapper being
            display:grid with a 1fr middle row to stretch .app-main and
@@ -264,7 +266,7 @@
     </style>
     <?= $this->renderSection('styles') ?>
 </head>
-<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<body class="<?= $embed ? 'erp-embed sidebar-expand-lg' : 'layout-fixed sidebar-expand-lg bg-body-tertiary' ?>">
 <div class="app-wrapper">
 
     <!-- Sidebar -->
@@ -447,6 +449,13 @@
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if (can('expense_claim.view')): ?>
+                    <li class="nav-item">
+                        <a href="<?= site_url('expense-claims') ?>" class="nav-link <?= $nav === 'expense-claims' ? 'active' : '' ?>">
+                            <i class="nav-icon fas fa-hand-holding-dollar"></i><p>Expense Claims</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <?php if (can('invoice.view') && can('bill.view')): ?>
                     <li class="nav-item <?= $nav === 'accounting' ? 'menu-open' : '' ?>">
                         <a href="<?= site_url('accounting') ?>" class="nav-link <?= $nav === 'accounting' ? 'active' : '' ?>">
@@ -503,6 +512,14 @@
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if (can('document.edit')): ?>
+                    <li class="nav-item">
+                        <a href="<?= site_url('documents/templates') ?>" class="nav-link <?= $nav === 'document-templates' ? 'active' : '' ?>">
+                            <i class="nav-icon fas fa-file-code"></i><p>Document Templates</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
                     <?php if (can('policy.view')): ?>
                     <li class="nav-item">
                         <a href="<?= site_url('policies') ?>" class="nav-link <?= $nav === 'policies' ? 'active' : '' ?>">
@@ -557,7 +574,7 @@
                     </li>
                     <?php endif; ?>
 
-                    <?php if (can('user.view') || can('role.view')): ?>
+                    <?php if (can('user.view') || can('role.view') || can('setting.view')): ?>
                     <li class="nav-header">Administration</li>
                     <?php if (can('user.view')): ?>
                     <li class="nav-item">
@@ -570,6 +587,13 @@
                     <li class="nav-item">
                         <a href="<?= site_url('auth/roles') ?>" class="nav-link <?= $nav === 'roles' ? 'active' : '' ?>">
                             <i class="nav-icon fas fa-shield-halved"></i><p>Roles &amp; Permissions</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    <?php if (can('setting.view')): ?>
+                    <li class="nav-item">
+                        <a href="<?= site_url('auth/localization') ?>" class="nav-link <?= $nav === 'localization' ? 'active' : '' ?>">
+                            <i class="nav-icon fas fa-globe"></i><p>Localization</p>
                         </a>
                     </li>
                     <?php endif; ?>
@@ -594,7 +618,7 @@
     // view instead.
     (function () {
         var side = document.querySelector('.app-sidebar');
-        if (! side) { return; }
+        if (! side || document.body.classList.contains('erp-embed')) { return; }
         var KEY = 'sy-sidebar-scroll';
         var saved = null;
         try { saved = sessionStorage.getItem(KEY); } catch (e) { }
@@ -698,7 +722,21 @@
         <div class="app-content-header">
             <div class="container-fluid">
                 <div class="row">
-                    <div class="col-sm-6"><h3 class="mb-0"><?= esc($title ?? '') ?></h3></div>
+                    <div class="col-sm-6">
+                        <?php $formCrumbs = \App\Libraries\FormBreadcrumbs::forPath(uri_string(), (string) ($title ?? '')); ?>
+                        <?php if (count($formCrumbs) > 1): ?>
+                            <nav aria-label="breadcrumb"><ol class="breadcrumb erp-crumbs">
+                                <?php foreach ($formCrumbs as $crumb): ?>
+                                    <?php if ($crumb['url'] !== null): ?>
+                                        <li class="breadcrumb-item"><a href="<?= esc($crumb['url']) ?>"><?= esc($crumb['label']) ?></a></li>
+                                    <?php else: ?>
+                                        <li class="breadcrumb-item active" aria-current="page"><?= esc($crumb['label']) ?></li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </ol></nav>
+                        <?php endif; ?>
+                        <h3 class="mb-0"><?= esc($title ?? '') ?></h3>
+                    </div>
                     <div class="col-sm-6 text-sm-end">
                         <?= $this->renderSection('pageActions') ?>
                     </div>
@@ -711,18 +749,49 @@
                     <div class="alert alert-success alert-dismissible"><?= esc(session()->getFlashdata('success')) ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
                 <?php endif; ?>
-                <?php if (session()->getFlashdata('error')): ?>
+                <?php $missingDetails = session()->getFlashdata('missing_details'); ?>
+                <?php if (! empty($missingDetails['groups'])): ?>
+                    <div class="alert alert-warning alert-dismissible erp-missing-alert" role="alert">
+                        <div class="fw-semibold mb-2"><i class="fas fa-triangle-exclamation me-2"></i><?= esc($missingDetails['operation']) ?> cannot be completed because required details are missing.</div>
+                        <?php foreach ($missingDetails['groups'] as $mg): ?>
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top pt-2 mt-2">
+                                <div>
+                                    <strong><?= esc($mg['title']) ?>:</strong>
+                                    <?= esc(implode(', ', array_column($mg['fields'], 'label'))) ?> <?= count($mg['fields']) === 1 ? 'is' : 'are' ?> missing.
+                                    <?php if (! empty($mg['note'])): ?><div class="small text-muted"><?= esc($mg['note']) ?></div><?php endif; ?>
+                                </div>
+                                <?php if (! empty($mg['url'])): ?>
+                                    <a href="<?= esc($mg['url']) ?>" class="btn btn-warning btn-sm fw-semibold" data-erp-form="off"><i class="fas fa-pen-to-square me-1"></i><?= $mg['entity'] === 'other' ? 'Open Record' : 'Complete Missing Details' ?></a>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php elseif (session()->getFlashdata('error')): ?>
                     <div class="alert alert-danger alert-dismissible"><?= esc(session()->getFlashdata('error')) ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
                 <?php endif; ?>
                 <?php if (session()->getFlashdata('errors')): ?>
                     <div class="alert alert-danger alert-dismissible">
                         <ul class="mb-0">
-                            <?php foreach (session()->getFlashdata('errors') as $err): ?>
-                                <li><?= esc($err) ?></li>
+                            <?php foreach (session()->getFlashdata('errors') as $errField => $err): ?>
+                                <li data-field="<?= esc(is_string($errField) ? $errField : '') ?>"><?= esc($err) ?></li>
                             <?php endforeach; ?>
                         </ul>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php
+                    $missingParam = (string) service('request')->getGet('missing');
+                    $returnParam  = \App\Modules\Document\Services\MissingDetails::safeReturn(service('request')->getGet('return'));
+                    $opParam      = (string) service('request')->getGet('op');
+                ?>
+                <?php if ($missingParam !== '' || $returnParam !== null): ?>
+                    <div id="erpMissingBar" class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2" role="status"
+                         data-missing="<?= esc($missingParam) ?>" data-return="<?= esc($returnParam ?? '') ?>" data-op="<?= esc($opParam) ?>">
+                        <span><i class="fas fa-triangle-exclamation me-2"></i><?= $opParam !== '' ? esc($opParam) . ': complete' : 'Complete' ?> the highlighted field(s), save, then return to continue.</span>
+                        <?php if ($returnParam !== null): ?><a href="<?= esc($returnParam) ?>" class="btn btn-outline-secondary btn-sm">Back without saving</a><?php endif; ?>
                     </div>
                 <?php endif; ?>
 
@@ -752,8 +821,15 @@
 <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.11/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<?php if (! $embed): ?>
+<script src="<?= base_url('assets/js/erp-forms.js') ?>?v=<?= @filemtime(FCPATH . 'assets/js/erp-forms.js') ?: 1 ?>"></script>
+<script src="<?= base_url('assets/js/erp-calendar.js') ?>?v=<?= @filemtime(FCPATH . 'assets/js/erp-calendar.js') ?: 1 ?>"></script>
+<script src="<?= base_url('assets/js/erp-form-nav.js') ?>?v=<?= @filemtime(FCPATH . 'assets/js/erp-form-nav.js') ?: 1 ?>"></script>
+<script src="<?= base_url('assets/js/erp-actions.js') ?>?v=<?= @filemtime(FCPATH . 'assets/js/erp-actions.js') ?: 1 ?>"></script>
+<?php endif; ?>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    if (document.body.classList.contains('erp-embed')) return;
     const badge = document.getElementById('notifBadge');
     const list = document.getElementById('notifList');
     const toggle = document.getElementById('notifBellToggle');
@@ -813,6 +889,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     let timer = null;
+    let seq = 0; // ignore a slow earlier response arriving after a newer one
 
     function render(data) {
         if (! data.results.length) {
@@ -849,9 +926,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         timer = setTimeout(function () {
+            const sent = ++seq;
             fetch('<?= site_url('search/live') ?>?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function (r) { return r.json(); })
-                .then(render)
+                .then(function (data) { if (sent === seq) { render(data); } })
                 .catch(function () {
                     results.innerHTML = '<div class="sy-sr-empty">Search failed.</div>';
                     results.classList.remove('d-none');
@@ -943,6 +1021,60 @@ document.addEventListener('DOMContentLoaded', function () {
         main.scrollTo({ top: 0, behavior: 'smooth' });
     });
 })();
+</script>
+<script>
+/* Missing-details guidance: highlight the fields named in ?missing=, and keep a "return to the original
+   operation" bar visible (sessionStorage) after the record is saved, until used or dismissed. */
+(function () {
+    var KEY = 'erp-missing-return', TTL = 30 * 60 * 1000;
+    function read() { try { var v = JSON.parse(sessionStorage.getItem(KEY) || 'null'); return v && Date.now() - v.t < TTL ? v : null; } catch (e) { return null; } }
+    function write(v) { try { if (v) { sessionStorage.setItem(KEY, JSON.stringify(v)); } else { sessionStorage.removeItem(KEY); } } catch (e) { /* ignore */ } }
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.self !== window.top) { return; }
+        var bar = document.getElementById('erpMissingBar');
+        if (bar) {
+            var names = (bar.dataset.missing || '').split(',').filter(Boolean), first = null, notFound = [];
+            if (bar.dataset.return) { write({ url: bar.dataset.return, op: bar.dataset.op || '', t: Date.now() }); }
+            names.forEach(function (n) {
+                var f = document.querySelector('form [name="' + n + '"]:not([type=hidden]), form [name="' + n + '[]"]:not([type=hidden])');
+                if (!f) { notFound.push(n.replace(/_/g, ' ')); return; }
+                f.classList.add('is-invalid', 'erp-missing-field');
+                var pane = f.closest('.tab-pane');
+                if (pane && window.bootstrap) { var t = document.querySelector('[data-bs-target="#' + pane.id + '"]'); if (t) { bootstrap.Tab.getOrCreateInstance(t).show(); } }
+                var clear = function () { f.classList.remove('is-invalid'); };
+                f.addEventListener('input', clear);
+                f.addEventListener('change', clear);
+                if (!f.disabled && !first) { first = f; }
+            });
+            if (notFound.length) { bar.insertAdjacentHTML('beforeend', '<div class="w-100 small">Not on this form: ' + notFound.join(', ') + '.</div>'); }
+            if (first) { setTimeout(function () { first.scrollIntoView({ block: 'center' }); first.focus(); }, 150); }
+            return;
+        }
+        var saved = read();
+        if (!saved) { return; }
+        var box = document.createElement('div');
+        box.className = 'alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-2';
+        var msg = document.createElement('span');
+        msg.textContent = 'Finished completing details? Continue ' + (saved.op ? 'with ' + saved.op : 'your operation') + '.';
+        var wrap = document.createElement('span');
+        var go = document.createElement('a'); go.href = saved.url; go.className = 'btn btn-success btn-sm me-2'; go.textContent = 'Return & continue';
+        go.addEventListener('click', function () { write(null); });
+        var x = document.createElement('button'); x.type = 'button'; x.className = 'btn btn-outline-secondary btn-sm'; x.textContent = 'Dismiss';
+        x.addEventListener('click', function () { write(null); box.remove(); });
+        wrap.appendChild(go); wrap.appendChild(x); box.appendChild(msg); box.appendChild(wrap);
+        var c = document.querySelector('.app-content .container-fluid') || document.querySelector('.app-content');
+        if (c) { c.insertBefore(box, c.firstChild); }
+    });
+})();
+</script>
+<script>
+/* Dropdowns inside scrolling containers (.table-responsive, cards) would be clipped: position those menus
+   with a fixed strategy so they layer above the table. Runs before Bootstrap's own click handler. */
+document.addEventListener('click', function (ev) {
+    var t = ev.target.closest && ev.target.closest('[data-bs-toggle="dropdown"]');
+    if (!t || !window.bootstrap || !t.closest('.table-responsive, .card-body, .modal-body, .dataTables_wrapper')) { return; }
+    bootstrap.Dropdown.getOrCreateInstance(t, { popperConfig: function (d) { return Object.assign({}, d, { strategy: 'fixed' }); } });
+}, true);
 </script>
 <?= $this->renderSection('scripts') ?>
 </body>

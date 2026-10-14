@@ -54,7 +54,7 @@
             <?php if (! empty($payslip['department_name'])): ?><td class="k">Department:</td><td class="v"><?= esc($payslip['department_name']) ?></td><?php else: ?><td></td><td></td><?php endif; ?>
         </tr>
         <tr>
-            <?php if (! empty($payslip['date_of_joining'])): ?><td class="k">Joining Date:</td><td class="v"><?= esc(date('d M Y', strtotime($payslip['date_of_joining']))) ?></td><?php else: ?><td></td><td></td><?php endif; ?>
+            <?php if (! empty($payslip['date_of_joining'])): ?><td class="k">Joining Date:</td><td class="v"><?= esc(erp_date($payslip['date_of_joining'])) ?></td><?php else: ?><td></td><td></td><?php endif; ?>
             <td class="k">Pay Period:</td><td class="v"><?= esc($monthName) ?> <?= esc($payslip['year']) ?></td>
         </tr>
     </table>
@@ -66,20 +66,20 @@
             <td>
                 <table class="lines">
                     <tr><th>Earnings</th><th class="amt">Amount</th></tr>
-                    <tr><td>Basic Salary</td><td class="amt"><?= number_format((float) $payslip['basic'], 2) ?></td></tr>
-                    <tr><td>HRA</td><td class="amt"><?= number_format((float) $payslip['hra'], 2) ?></td></tr>
-                    <tr><td>Allowances</td><td class="amt"><?= number_format((float) $payslip['allowances'], 2) ?></td></tr>
-                    <tr class="total"><td>Gross Earnings</td><td class="amt"><?= number_format((float) $payslip['gross'], 2) ?></td></tr>
+                    <tr><td>Basic Salary</td><td class="amt"><?= erp_number((float) $payslip['basic'], 2) ?></td></tr>
+                    <tr><td>HRA</td><td class="amt"><?= erp_number((float) $payslip['hra'], 2) ?></td></tr>
+                    <tr><td>Allowances</td><td class="amt"><?= erp_number((float) $payslip['allowances'], 2) ?></td></tr>
+                    <tr class="total"><td>Gross Earnings</td><td class="amt"><?= erp_number((float) $payslip['gross'], 2) ?></td></tr>
                 </table>
             </td>
             <td>
                 <table class="lines">
                     <tr><th>Deductions</th><th class="amt">Amount</th></tr>
-                    <tr><td>Deductions</td><td class="amt"><?= number_format((float) $payslip['deductions'], 2) ?></td></tr>
+                    <tr><td>Deductions</td><td class="amt"><?= erp_number((float) $payslip['deductions'], 2) ?></td></tr>
                     <?php if ((float) ($payslip['lop_days'] ?? 0) > 0): ?>
-                    <tr><td>Loss of Pay (<?= rtrim(rtrim(number_format((float) $payslip['lop_days'], 1), '0'), '.') ?> day<?= (float) $payslip['lop_days'] != 1 ? 's' : '' ?>)</td><td class="amt"><?= number_format((float) $payslip['lop_amount'], 2) ?></td></tr>
+                    <tr><td>Loss of Pay (<?= rtrim(rtrim(erp_number((float) $payslip['lop_days'], 1), '0'), '.') ?> day<?= (float) $payslip['lop_days'] != 1 ? 's' : '' ?>)</td><td class="amt"><?= erp_number((float) $payslip['lop_amount'], 2) ?></td></tr>
                     <?php endif; ?>
-                    <tr class="total"><td>Total Deductions</td><td class="amt"><?= number_format((float) $payslip['deductions'] + (float) ($payslip['lop_amount'] ?? 0), 2) ?></td></tr>
+                    <tr class="total"><td>Total Deductions</td><td class="amt"><?= erp_number((float) $payslip['deductions'] + (float) ($payslip['lop_amount'] ?? 0), 2) ?></td></tr>
                 </table>
             </td>
         </tr>
@@ -87,7 +87,7 @@
 
     <div class="net">
         <table>
-            <tr><td class="label">Net Salary</td><td class="amount">Rs. <?= number_format((float) $payslip['net'], 2) ?></td></tr>
+            <tr><td class="label">Net Salary</td><td class="amount">Rs. <?= erp_number((float) $payslip['net'], 2) ?></td></tr>
         </table>
     </div>
 

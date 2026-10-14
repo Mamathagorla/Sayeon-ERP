@@ -26,7 +26,7 @@
                             <?= $n['link'] ? '<a href="' . $n['link'] . '" class="text-decoration-none">' . esc($n['title']) . '</a>' : esc($n['title']) ?>
                         </div>
                         <div class="text-muted small"><?= esc($n['message']) ?></div>
-                        <div class="text-muted small"><?= esc(date('d/m/Y, g:i A', strtotime($n['created_at']))) ?></div>
+                        <div class="text-muted small"><?= esc(erp_date($n['created_at']) . ", " . erp_time($n['created_at'])) ?></div>
                     </div>
                     <?php if (! $n['is_read']): ?>
                     <form action="<?= site_url('notifications/' . $n['id'] . '/read') ?>" method="post">

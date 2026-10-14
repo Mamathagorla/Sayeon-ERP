@@ -2,83 +2,143 @@
 
 <?= $this->section('styles') ?>
 <style>
-    #calendar { background: var(--sy-surface); padding: 1rem; border-radius: .375rem; }
-    .fc-event { cursor: pointer; }
-    .sy-cal-legend button { display: inline-flex; align-items: center; gap: 6px; color: var(--sy-ink); font-weight: 600; background: none; border: 1px solid transparent; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
-    .sy-cal-legend button:hover { background: var(--sy-accent-soft); }
-    .sy-cal-legend button.active { background: var(--sy-accent-soft); border-color: var(--sy-border); }
-    .sy-cal-legend button.dimmed { opacity: .45; }
-    .sy-cal-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    /* ============ Calendar design system ============
+       One muted palette for every event category. Each category defines its
+       colours once here; events, legend chips and the day-detail popup all read
+       these tokens. Change a colour in this block only. */
+    .sy-cal-page {
+        --calendar-meeting-bg: #E8F1FF;
+        --calendar-meeting-text: #2563EB;
+        --calendar-meeting-accent: #3B82F6;
 
-    /* Selected-date highlight — applied to whichever cell type is
-       showing (month day cell, or week/day column header). */
-    .fc-daygrid-day.fc-day-selected .fc-daygrid-day-frame { background: var(--sy-accent-soft); border-radius: 6px; }
-    .fc-timegrid-col.fc-day-selected { background: var(--sy-accent-soft); }
-    .fc-col-header-cell.fc-day-selected { background: var(--sy-accent-soft); }
-    .fc-daygrid-day, .fc-timegrid-col, .fc-col-header-cell { cursor: pointer; }
+        --calendar-task-bg: #F1F3F5;
+        --calendar-task-text: #495057;
+        --calendar-task-accent: #6B7280;
 
-    .sy-cal-modal-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--sy-border-soft); text-decoration: none; }
-    .sy-cal-modal-item:last-child { border-bottom: none; }
-    .sy-cal-modal-item .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
-    .sy-cal-modal-item .title { display: block; font-weight: 600; font-size: .88rem; color: var(--sy-ink); }
-    .sy-cal-modal-item .meta { display: block; font-size: .76rem; color: var(--sy-muted); }
+        --calendar-compliance-bg: #FFF4E5;
+        --calendar-compliance-text: #B45309;
+        --calendar-compliance-accent: #F59E0B;
 
-    .sy-week-card { background: var(--sy-surface); border: 1px solid var(--sy-border-soft); border-radius: .5rem; padding: 1rem 1.15rem; margin-bottom: 1rem; }
-    .sy-week-card .sy-week-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .85rem; }
-    .sy-week-card .sy-week-title { font-weight: 700; font-size: .95rem; color: var(--sy-ink); margin: 0; }
-    .sy-week-card .sy-week-total { font-size: .8rem; color: var(--sy-muted); }
-    .sy-week-card .sy-week-total strong { color: var(--sy-ink); font-size: 1rem; }
-    .sy-week-nav { display: flex; gap: 4px; }
-    .sy-week-nav button { border: 1px solid var(--sy-border); background: var(--sy-surface); border-radius: 6px; width: 28px; height: 28px; line-height: 1; cursor: pointer; color: var(--sy-ink); }
-    .sy-week-nav button:hover { background: var(--sy-accent-soft); }
-    .sy-week-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
-    .sy-week-day { text-align: center; }
-    .sy-week-day .dow { font-size: .72rem; font-weight: 700; color: var(--sy-muted); text-transform: uppercase; margin-bottom: 6px; }
-    .sy-week-day .bar-track { height: 70px; display: flex; align-items: flex-end; justify-content: center; background: var(--sy-surface-alt, rgba(0,0,0,.03)); border-radius: 6px; padding: 3px; margin-bottom: 6px; }
-    .sy-week-day .bar { width: 60%; border-radius: 4px 4px 2px 2px; background: var(--sy-accent, #cc1f2c); min-height: 3px; transition: height .2s ease; }
-    .sy-week-day .bar.is-empty { background: var(--sy-border); }
-    .sy-week-day .hrs { font-size: .72rem; font-weight: 600; color: var(--sy-ink); }
-    .sy-week-day.is-today .dow { color: var(--sy-accent, #cc1f2c); }
+        --calendar-overdue-bg: #FDECEC;
+        --calendar-overdue-text: #C24141;
+        --calendar-overdue-accent: #E57373;
+
+        color: var(--sy-ink);
+    }
+    /* Per-element aliases the components use. Legend chips carry data-category;
+       events and popup items carry sy-cal-cat-<category>. */
+    .sy-cal-cat-meeting,    [data-category="meeting"]    { --cal-bg: var(--calendar-meeting-bg);    --cal-text: var(--calendar-meeting-text);    --cal-accent: var(--calendar-meeting-accent); }
+    .sy-cal-cat-task,       [data-category="task"]       { --cal-bg: var(--calendar-task-bg);       --cal-text: var(--calendar-task-text);       --cal-accent: var(--calendar-task-accent); }
+    .sy-cal-cat-compliance, [data-category="compliance"] { --cal-bg: var(--calendar-compliance-bg); --cal-text: var(--calendar-compliance-text); --cal-accent: var(--calendar-compliance-accent); }
+    .sy-cal-cat-overdue,    [data-category="overdue"]    { --cal-bg: var(--calendar-overdue-bg);    --cal-text: var(--calendar-overdue-text);    --cal-accent: var(--calendar-overdue-accent); }
+
+    /* ---- Intro and legend ---- */
+    .sy-cal-legend { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .85rem; }
+    .sy-cal-chip { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 999px; background: var(--cal-bg); color: var(--sy-ink); font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; transition: box-shadow .15s ease, opacity .15s ease; }
+    .sy-cal-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cal-accent); flex: none; }
+    .sy-cal-chip:hover { box-shadow: inset 0 0 0 1px var(--cal-accent); }
+    .sy-cal-chip.is-active { box-shadow: inset 0 0 0 1.5px var(--cal-accent); }
+    .sy-cal-chip.is-dimmed { opacity: .5; }
+    .sy-cal-chip:focus-visible { outline: 2px solid var(--cal-accent); outline-offset: 2px; }
+    .sy-cal-filter-hint { font-size: .8rem; color: var(--sy-muted); margin-bottom: .75rem; }
+    .sy-cal-filter-hint[hidden] { display: none; }
+    .sy-cal-filter-hint strong { color: var(--sy-ink); }
+    .sy-cal-filter-hint a { color: var(--sy-accent-ink); font-weight: 600; }
+
+    /* ---- Calendar card ---- */
+    .sy-cal-wrap { background: var(--sy-surface); border: 1px solid var(--sy-border-soft); border-radius: 16px; box-shadow: 0 1px 2px rgba(20, 24, 32, .04); padding: 1.1rem 1.2rem; min-width: 0; }
+    .sy-cal-page #calendar { --fc-border-color: #edf0f4; --fc-page-bg-color: var(--sy-surface); color: var(--sy-ink); max-width: 100%; }
+
+    /* ---- Header: title, neutral nav buttons, Month/Week/Agenda segmented control ---- */
+    .sy-cal-page #calendar .fc-toolbar-title { font-size: 1rem; font-weight: 600; letter-spacing: -.01em; color: var(--sy-ink); }
+    .sy-cal-page #calendar .fc .fc-button { height: 34px; padding: 0 12px; border-radius: 10px; background: var(--sy-surface); color: var(--sy-ink); border: 1px solid var(--sy-border); box-shadow: none; font-size: .8rem; font-weight: 600; text-transform: none; }
+    .sy-cal-page #calendar .fc .fc-button:hover { background: var(--sy-hover-bg); color: var(--sy-ink); border-color: var(--sy-border-strong); }
+    .sy-cal-page #calendar .fc .fc-button:focus-visible { box-shadow: 0 0 0 3px var(--sy-accent-soft); }
+    .sy-cal-page #calendar .fc .fc-button-group { display: inline-flex; gap: 4px; }
+    .sy-cal-page #calendar .fc .fc-button-group > .fc-button { margin: 0; border-radius: 10px; }
+    .sy-cal-page #calendar .fc-toolbar-chunk:last-child .fc-button-group { gap: 2px; padding: 3px; background: var(--sy-subtle-bg); border: 1px solid var(--sy-border-soft); border-radius: 12px; }
+    .sy-cal-page #calendar .fc-toolbar-chunk:last-child .fc-button-group > .fc-button { height: 30px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--sy-muted); }
+    .sy-cal-page #calendar .fc-toolbar-chunk:last-child .fc-button-group > .fc-button:hover { background: var(--sy-surface); color: var(--sy-ink); }
+    .sy-cal-page #calendar .fc-toolbar-chunk:last-child .fc-button-group > .fc-button.fc-button-active { background: var(--sy-accent-ink); color: #fff; box-shadow: 0 2px 6px -3px rgba(204, 31, 44, .5); }
+
+    /* ---- Day headers, day numbers, weekend and today ---- */
+    .sy-cal-page #calendar .fc-col-header-cell-cushion { padding: 10px 0; font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--sy-muted); text-decoration: none; }
+    .sy-cal-page #calendar .fc-daygrid-day-number { padding: 8px 10px; font-size: .8rem; font-weight: 500; color: var(--sy-ink); text-decoration: none; }
+    .sy-cal-page #calendar .fc-day-other .fc-daygrid-day-number { color: var(--sy-muted-soft); }
+    .sy-cal-page #calendar .fc-day-sat,
+    .sy-cal-page #calendar .fc-day-sun { background: #fafbfc; }
+    .sy-cal-page #calendar .fc-day-today { background: transparent; }
+    .sy-cal-page #calendar .fc-day-today .fc-daygrid-day-number { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; margin: 4px 6px; padding: 0; border-radius: 999px; background: var(--sy-accent-ink); color: #fff; font-weight: 600; box-shadow: 0 2px 6px -2px rgba(204, 31, 44, .45); }
+    .sy-cal-page #calendar .fc-more-link { font-size: .72rem; font-weight: 600; color: var(--sy-accent-ink); }
+
+    /* ---- Events: soft category tint, coloured left edge, readable text ---- */
+    .sy-cal-page #calendar .fc-daygrid-event,
+    .sy-cal-page #calendar .fc-timegrid-event { margin: 2px 4px; border-radius: 8px; box-shadow: none; transition: filter .15s ease; }
+    .sy-cal-page #calendar .fc-daygrid-event { padding: 2px 6px 2px 5px; font-size: .74rem; line-height: 1.3; }
+    .sy-cal-page #calendar .fc-daygrid-event:hover,
+    .sy-cal-page #calendar .fc-timegrid-event:hover { filter: brightness(.97); }
+    .sy-cal-page #calendar .fc-event[class*="sy-cal-cat-"] {
+        background-color: var(--cal-bg) !important;
+        border-color: var(--cal-bg);
+        border-left: 3px solid var(--cal-accent);
+        color: var(--cal-text);
+        --fc-event-bg-color: var(--cal-bg);
+        --fc-event-border-color: var(--cal-accent);
+        --fc-event-text-color: var(--cal-text);
+    }
+    .sy-cal-page #calendar .fc-daygrid-event-dot { border-color: var(--cal-accent) !important; }
+    .sy-cal-page #calendar .fc-event-title { font-size: .76rem; font-weight: 600; color: inherit; }
+    .sy-cal-page #calendar .fc-event-time { font-size: .7rem; font-weight: 500; color: inherit; opacity: .8; }
+
+    /* Agenda (list) rows: plain rows, the coloured dot carries the category. */
+    .sy-cal-page #calendar .fc-list-event[class*="sy-cal-cat-"] { background: transparent !important; border: 0; border-left: 0; color: var(--sy-ink); }
+    .sy-cal-page #calendar .fc-list-event-title { color: var(--sy-ink); }
+    .sy-cal-page #calendar .fc-list-event:hover td { background-color: var(--sy-hover-bg); }
+
+    /* ---- Day detail popup: same category tints as the events ---- */
+    .sy-cal-modal .modal-content { border: 0; border-radius: 16px; box-shadow: 0 16px 40px -20px rgba(20, 24, 32, .35); }
+    .sy-cal-modal .modal-title { color: var(--sy-ink); font-size: .95rem; }
+    .sy-cal-modal .sy-cal-modal-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; margin-bottom: 8px; background: var(--sy-surface); border: 1px solid var(--sy-border-soft); border-left: 3px solid var(--sy-muted); border-radius: 10px; color: var(--sy-ink); text-decoration: none; transition: filter .15s ease; }
+    .sy-cal-modal .sy-cal-modal-item[class*="sy-cal-cat-"] { background: var(--cal-bg); border-left-color: var(--cal-accent); }
+    .sy-cal-modal .sy-cal-modal-item:hover { filter: brightness(.97); }
+    .sy-cal-modal .sy-cal-modal-item .title { display: block; font-weight: 600; font-size: .88rem; color: var(--sy-ink); }
+    .sy-cal-modal .sy-cal-modal-item .meta { display: block; font-size: .75rem; color: var(--sy-muted); margin-top: 2px; }
+    .sy-cal-modal .sy-cal-modal-item .flex-grow-1 { flex: 1 1 auto; min-width: 0; }
+
+    /* ---- Mobile and tablet ---- */
+    @media (max-width: 767.98px) {
+        .sy-cal-wrap { padding: .75rem; border-radius: 14px; }
+        .sy-cal-legend { gap: .4rem; }
+        .sy-cal-page #calendar .fc-header-toolbar { flex-direction: column; align-items: stretch; gap: .6rem; }
+        .sy-cal-page #calendar .fc-toolbar-chunk { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; }
+        .sy-cal-page #calendar .fc-toolbar-title { font-size: .95rem; text-align: center; }
+        .sy-cal-page #calendar .fc-col-header-cell-cushion { font-size: .62rem; letter-spacing: .02em; }
+        .sy-cal-page #calendar .fc-daygrid-day-number { padding: 4px 6px; font-size: .72rem; }
+        .sy-cal-page #calendar .fc-daygrid-event .fc-event-time { display: none; }
+    }
 </style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<div class="sy-cal-page">
 <?php if (! $canViewTasks && ! $canViewMeetings && ! $canViewCompliance): ?>
     <p class="text-muted">You don't have permission to view any calendar data yet.</p>
 <?php else: ?>
-    <div class="d-flex gap-2 mb-3 small flex-wrap sy-cal-legend">
-        <?php if ($canViewTasks): ?><button type="button" data-filter="Task"><span class="dot" style="background:#5b6472"></span>Task due</button><?php endif; ?>
-        <?php if ($canViewMeetings): ?><button type="button" data-filter="Meeting"><span class="dot" style="background:#2563eb"></span>Meeting</button><?php endif; ?>
+    <div class="sy-cal-legend" role="group" aria-label="Show only this type">
+        <?php if ($canViewTasks): ?><button type="button" class="sy-cal-chip" data-category="task" aria-pressed="false"><span class="dot"></span>Task due</button><?php endif; ?>
+        <?php if ($canViewMeetings): ?><button type="button" class="sy-cal-chip" data-category="meeting" aria-pressed="false"><span class="dot"></span>Meeting</button><?php endif; ?>
         <?php if ($canViewCompliance): ?>
-            <button type="button" data-filter="Compliance"><span class="dot" style="background:#d97706"></span>Compliance due</button>
-            <button type="button" data-filter="Overdue"><span class="dot" style="background:#cc1f2c"></span>Overdue</button>
+            <button type="button" class="sy-cal-chip" data-category="compliance" aria-pressed="false"><span class="dot"></span>Compliance due</button>
+            <button type="button" class="sy-cal-chip" data-category="overdue" aria-pressed="false"><span class="dot"></span>Overdue</button>
         <?php endif; ?>
     </div>
-    <div class="text-muted small mb-2 sy-cal-filter-hint" style="display:none">Showing <strong class="sy-cal-filter-name"></strong> only — <a href="#" class="sy-cal-filter-clear">show all</a></div>
+    <div class="sy-cal-filter-hint" hidden>Showing <strong class="sy-cal-filter-name"></strong> only · <a href="#" class="sy-cal-filter-clear">Show all</a></div>
 
-    <?php if ($canViewWeekHours): ?>
-    <div class="sy-week-card" id="syWeekCard">
-        <div class="sy-week-head">
-            <div>
-                <p class="sy-week-title mb-0">This Week's Work Time</p>
-                <span class="text-muted small" id="syWeekRange"></span>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="sy-week-total text-end">Total <br><strong id="syWeekTotal">0h 0m</strong></div>
-                <div class="sy-week-nav">
-                    <button type="button" id="syWeekPrev" title="Previous week">&lsaquo;</button>
-                    <button type="button" id="syWeekToday" title="This week">•</button>
-                    <button type="button" id="syWeekNext" title="Next week">&rsaquo;</button>
-                </div>
-            </div>
-        </div>
-        <div class="sy-week-days" id="syWeekDays"></div>
+    <div class="sy-cal-wrap">
+        <div id="calendar"></div>
     </div>
-    <?php endif; ?>
 
-    <div id="calendar"></div>
-
-    <div class="modal fade" id="syCalDayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade sy-cal-modal" id="syCalDayModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -90,6 +150,7 @@
         </div>
     </div>
 <?php endif; ?>
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -105,50 +166,51 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalListEl  = document.getElementById('syCalModalList');
     const syCalModal   = modalEl ? new bootstrap.Modal(modalEl) : null;
 
-    // Legend-as-filter: clicking a legend item shows only that category
-    // (or, for "Overdue", only events flagged overdue via importance=0 —
-    // see CalendarController::events(), the same signal both Task and
-    // Compliance use for their red/overdue colouring). Clicking the same
-    // item again clears the filter. Re-fetches on every filter change
-    // (cheap, small JSON payload) rather than caching, so the calendar
-    // never shows stale data if something changed elsewhere in the app.
-    let activeFilter  = null;
-    const filterHint  = document.querySelector('.sy-cal-filter-hint');
-    const filterName  = document.querySelector('.sy-cal-filter-name');
-    const filterButtons = document.querySelectorAll('.sy-cal-legend button');
+    // One category per event, matching the legend tabs. Overdue (importance 0,
+    // set by the server for overdue tasks and compliance) takes priority.
+    // Colours come from the CSS tokens, so no colour is defined here.
+    const TYPE_TO_CATEGORY = { Task: 'task', Meeting: 'meeting', Compliance: 'compliance' };
 
-    function matchesFilter(event) {
-        if (! activeFilter) return true;
-        if (activeFilter === 'Overdue') return (event.extendedProps.importance ?? 9) === 0;
-        return event.extendedProps.type === activeFilter;
+    function categoryOf(event) {
+        if ((event.extendedProps.importance ?? 9) === 0) return 'overdue';
+        return TYPE_TO_CATEGORY[event.extendedProps.type] || 'task';
     }
 
-    function updateLegendState() {
-        filterButtons.forEach(function (btn) {
-            const isActive = btn.dataset.filter === activeFilter;
-            btn.classList.toggle('active', isActive);
-            btn.classList.toggle('dimmed', !! activeFilter && ! isActive);
+    // ---- Legend tabs: click one to show only that type; click again to show all ----
+    let activeCategory = null;
+    const legendButtons = document.querySelectorAll('.sy-cal-chip[data-category]');
+    const filterHint    = document.querySelector('.sy-cal-filter-hint');
+    const filterName    = document.querySelector('.sy-cal-filter-name');
+    const legendLabels  = {};
+    legendButtons.forEach(btn => { legendLabels[btn.dataset.category] = btn.textContent.trim(); });
+
+    function updateLegend() {
+        legendButtons.forEach(btn => {
+            const on = btn.dataset.category === activeCategory;
+            btn.classList.toggle('is-active', on);
+            btn.classList.toggle('is-dimmed', activeCategory !== null && ! on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
-        if (activeFilter) {
-            filterName.textContent = activeFilter === 'Overdue' ? 'Overdue items' : activeFilter + (activeFilter === 'Meeting' ? 's' : ' due');
-            filterHint.style.display = '';
-        } else {
-            filterHint.style.display = 'none';
+        filterHint.hidden = activeCategory === null;
+        if (activeCategory !== null) {
+            filterName.textContent = legendLabels[activeCategory];
         }
     }
 
-    filterButtons.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            activeFilter = (activeFilter === btn.dataset.filter) ? null : btn.dataset.filter;
-            updateLegendState();
-            calendar.refetchEvents();
+    function setCategory(category) {
+        activeCategory = category;
+        updateLegend();
+        calendar.refetchEvents();
+    }
+
+    legendButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            setCategory(activeCategory === btn.dataset.category ? null : btn.dataset.category);
         });
     });
-    document.querySelector('.sy-cal-filter-clear').addEventListener('click', function (e) {
+    document.querySelector('.sy-cal-filter-clear').addEventListener('click', e => {
         e.preventDefault();
-        activeFilter = null;
-        updateLegendState();
-        calendar.refetchEvents();
+        setCategory(null);
     });
 
     function toISODate(d) {
@@ -174,16 +236,10 @@ document.addEventListener('DOMContentLoaded', function () {
         modalListEl.innerHTML = '';
 
         dayEvents.forEach(e => {
-            const time = e.allDay ? '' : e.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            const time = e.allDay ? 'All day' : e.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-            // Built as real DOM nodes with .textContent (not innerHTML
-            // string concatenation) — e.title is a task/meeting/
-            // compliance-item title a normal user can set to anything,
-            // so it must never be interpreted as HTML here.
-            const dot = document.createElement('span');
-            dot.className = 'dot';
-            dot.style.background = e.backgroundColor;
-
+            // Built with .textContent, not string concatenation: event titles
+            // come from user-entered tasks, meetings and compliance items.
             const title = document.createElement('span');
             title.className = 'title';
             title.textContent = e.title;
@@ -198,8 +254,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const a = document.createElement('a');
             a.href      = e.url || '#';
-            a.className = 'sy-cal-modal-item';
-            a.append(dot, body);
+            a.className = 'sy-cal-modal-item sy-cal-cat-' + categoryOf(e);
+            a.append(body);
             modalListEl.appendChild(a);
         });
 
@@ -209,6 +265,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' },
+        buttonText: { today: 'Today', month: 'Month', week: 'Week', list: 'Agenda' },
+        eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
         height: 'auto',
         // Only the top few events per day render directly on the month
         // grid (most important first via eventOrder) — the rest are
@@ -217,27 +275,17 @@ document.addEventListener('DOMContentLoaded', function () {
         eventOrder: 'extendedProps.importance,start',
         events: function (info, successCallback, failureCallback) {
             fetch(eventsUrl).then(function (r) { return r.json(); }).then(function (data) {
-                successCallback(data.filter(matchesFilter));
+                successCallback(activeCategory === null ? data : data.filter(e => categoryOf(e) === activeCategory));
             }).catch(failureCallback);
+        },
+        eventClassNames: function (arg) {
+            return ['sy-cal-cat-' + categoryOf(arg.event)];
         },
         dateClick: function (info) {
             selectDate(info.dateStr);
             const dayEvents = eventsOnDate(info.dateStr);
             if (dayEvents.length) {
                 openDayModal(info.dateStr, dayEvents);
-            }
-        },
-        // Without this, FullCalendar's own default url-follow behaviour
-        // is inconsistent across the three views (month/week/list) and
-        // can be swallowed by dayMaxEvents' "+N more" popover — so a
-        // click on an event itself did nothing in practice. Explicit and
-        // unconditional: every event from CalendarController::events()
-        // (task/meeting/compliance) always carries a real `url` to its
-        // existing show page.
-        eventClick: function (info) {
-            if (info.event.url) {
-                info.jsEvent.preventDefault();
-                window.location.href = info.event.url;
             }
         },
         moreLinkClick: function (info) {
@@ -249,86 +297,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     calendar.render();
-
-    // Weekly time/work view — independent of the calendar above, own
-    // fetch/nav state. Reuses check_in/check_out attendance data via
-    // CalendarController::weekHours(); no new time-tracking records.
-    const weekCard = document.getElementById('syWeekCard');
-    if (weekCard) {
-        const weekHoursUrl = '<?= site_url('calendar/week-hours') ?>';
-        const daysEl   = document.getElementById('syWeekDays');
-        const rangeEl  = document.getElementById('syWeekRange');
-        const totalEl  = document.getElementById('syWeekTotal');
-        let weekAnchor = toISODate(new Date());
-
-        function fmtHours(mins) {
-            return Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm';
-        }
-
-        function fmtRange(start, end) {
-            const s = new Date(start + 'T00:00:00'), e = new Date(end + 'T00:00:00');
-            const opts = { month: 'short', day: 'numeric' };
-            return s.toLocaleDateString(undefined, opts) + ' – ' + e.toLocaleDateString(undefined, opts);
-        }
-
-        function loadWeek() {
-            fetch(weekHoursUrl + '?week=' + weekAnchor).then(r => r.json()).then(data => {
-                rangeEl.textContent = fmtRange(data.weekStart, data.weekEnd);
-                totalEl.textContent = fmtHours(data.totalMinutes);
-
-                const maxMins = Math.max(60, ...data.days.map(d => d.minutes));
-                const today = toISODate(new Date());
-
-                daysEl.innerHTML = '';
-                data.days.forEach(d => {
-                    const pct = d.minutes > 0 ? Math.max(6, Math.round((d.minutes / maxMins) * 100)) : 0;
-
-                    const col = document.createElement('div');
-                    col.className = 'sy-week-day' + (d.date === today ? ' is-today' : '');
-
-                    const dow = document.createElement('div');
-                    dow.className = 'dow';
-                    dow.textContent = d.label;
-
-                    const track = document.createElement('div');
-                    track.className = 'bar-track';
-                    const bar = document.createElement('div');
-                    bar.className = 'bar' + (d.minutes === 0 ? ' is-empty' : '');
-                    bar.style.height = (d.minutes > 0 ? pct : 4) + '%';
-                    bar.title = d.minutes > 0 ? fmtHours(d.minutes) : (d.status ? d.status.replace('_', ' ') : 'No record');
-                    track.appendChild(bar);
-
-                    const hrs = document.createElement('div');
-                    hrs.className = 'hrs';
-                    hrs.textContent = d.minutes > 0 ? fmtHours(d.minutes) : '—';
-
-                    col.append(dow, track, hrs);
-                    daysEl.appendChild(col);
-                });
-            });
-        }
-
-        document.getElementById('syWeekPrev').addEventListener('click', function () {
-            weekAnchor = date_add(weekAnchor, -7);
-            loadWeek();
-        });
-        document.getElementById('syWeekNext').addEventListener('click', function () {
-            weekAnchor = date_add(weekAnchor, 7);
-            loadWeek();
-        });
-        document.getElementById('syWeekToday').addEventListener('click', function () {
-            weekAnchor = toISODate(new Date());
-            loadWeek();
-        });
-
-        function date_add(dateStr, days) {
-            const d = new Date(dateStr + 'T00:00:00');
-            d.setDate(d.getDate() + days);
-            return toISODate(d);
-        }
-
-        loadWeek();
-    }
 });
 </script>
 <?= $this->endSection() ?>

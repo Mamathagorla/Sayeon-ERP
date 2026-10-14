@@ -59,7 +59,7 @@ if (! empty($record['date_of_joining']) && $lastDay) {
     </table>
 
     <div class="meta">
-        <div class="date">Date: <?= esc(date('d/m/Y')) ?></div>
+        <div class="date">Date: <?= esc(erp_date(date('Y-m-d'))) ?></div>
         <div>TO WHOM IT MAY CONCERN</div>
     </div>
 
@@ -75,14 +75,14 @@ if (! empty($record['date_of_joining']) && $lastDay) {
         <tr><td class="k">Employee ID</td><td><?= esc($record['employee_code'] ?? '—') ?></td></tr>
         <tr><td class="k">Designation</td><td><?= esc($record['designation'] ?? '—') ?></td></tr>
         <?php if (! empty($record['department_name'])): ?><tr><td class="k">Department</td><td><?= esc($record['department_name']) ?></td></tr><?php endif; ?>
-        <tr><td class="k">Date of Joining</td><td><?= ! empty($record['date_of_joining']) ? esc(date('d/m/Y', strtotime($record['date_of_joining']))) : '—' ?></td></tr>
-        <tr><td class="k">Last Working Day</td><td><?= $lastDay ? esc(date('d/m/Y', strtotime($lastDay))) : '—' ?></td></tr>
+        <tr><td class="k">Date of Joining</td><td><?= ! empty($record['date_of_joining']) ? esc(erp_date($record['date_of_joining'])) : '—' ?></td></tr>
+        <tr><td class="k">Last Working Day</td><td><?= $lastDay ? esc(erp_date($lastDay)) : '—' ?></td></tr>
         <?php if ($tenure): ?><tr><td class="k">Total Tenure</td><td><?= esc($tenure) ?></td></tr><?php endif; ?>
     </table>
 
     <p>
         The employee has been formally relieved from their services with the company effective from
-        <strong><?= $lastDay ? esc(date('d/m/Y', strtotime($lastDay))) : '—' ?></strong>,
+        <strong><?= $lastDay ? esc(erp_date($lastDay)) : '—' ?></strong>,
         after completion of the required clearance and handover formalities, following their
         <?= $isTermination ? 'separation from the company' : 'resignation' ?>.
     </p>

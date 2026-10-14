@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-8">
     <div class="card-body">
-        <form action="<?= $item ? site_url('compliance/' . $item['id']) : site_url('compliance') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Compliance Details" action="<?= $item ? site_url('compliance/' . $item['id']) : site_url('compliance') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -17,15 +17,12 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Compliance Type</label>
-                    <div class="d-flex gap-2">
-                        <select name="compliance_type_id" id="complianceTypeSelect" class="form-select" required>
-                            <option value="">Select type</option>
-                            <?php foreach ($types as $t): ?>
-                                <option value="<?= $t['id'] ?>" <?= (($item['compliance_type_id'] ?? null) == $t['id']) ? 'selected' : '' ?>><?= esc($t['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="button" class="btn btn-outline-secondary text-nowrap" id="addTypeBtn" title="Add a new compliance type">+ New</button>
-                    </div>
+                    <select name="compliance_type_id" id="complianceTypeSelect" class="form-select" required>
+                        <option value="">Select type</option>
+                        <?php foreach ($types as $t): ?>
+                            <option value="<?= $t['id'] ?>" <?= (($item['compliance_type_id'] ?? null) == $t['id']) ? 'selected' : '' ?>><?= esc($t['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                     <div class="form-text">Only shows the types applicable to the selected company, once <a href="<?= site_url('compliance/types/settings') ?>">configured</a> — otherwise every type is shown.</div>
                 </div>
                 <div class="col-12 mb-3">
@@ -36,6 +33,7 @@
                     <label class="form-label">Regulator <span class="text-muted small">(optional, e.g. "GST Dept", "EU GDPR", "OSHA")</span></label>
                     <input type="text" name="regulator" class="form-control" value="<?= esc($item['regulator'] ?? '') ?>">
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Schedule &amp; Reminders"></div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Period <span class="text-muted small">(optional, e.g. "2024-2025", "Q1 2026")</span></label>
                     <input type="text" name="period" class="form-control" value="<?= esc($item['period'] ?? '') ?>">
@@ -56,6 +54,7 @@
                     <label class="form-label">Reminder (days before due)</label>
                     <input type="number" name="reminder_days_before" class="form-control" min="0" value="<?= esc($item['reminder_days_before'] ?? 7) ?>">
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Responsibility &amp; Notes"></div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Responsible Person</label>
                     <select name="responsible_user_id" class="form-select">
@@ -90,7 +89,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const companySelect = document.getElementById('complianceCompanySelect');
     const typeSelect     = document.getElementById('complianceTypeSelect');
-    const addTypeBtn     = document.getElementById('addTypeBtn');
 
     function refreshTypeOptions() {
         const list = typesByCompany[companySelect.value] && typesByCompany[companySelect.value].length
@@ -109,37 +107,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     companySelect.addEventListener('change', refreshTypeOptions);
-
-    addTypeBtn.addEventListener('click', function () {
-        if (! companySelect.value) {
-            alert('Pick a company first.');
-            return;
-        }
-        const name = prompt('New compliance type name:');
-        if (! name || ! name.trim()) return;
-
-        const formData = new FormData();
-        formData.append('name', name.trim());
-        formData.append('company_id', companySelect.value);
-        formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
-
-        fetch('<?= site_url('compliance/types') ?>', { method: 'POST', body: formData })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.error) { alert(data.error); return; }
-
-                // Keep both the per-company cache and the "all types"
-                // fallback in sync so switching companies afterward
-                // (without a page reload) still shows it correctly.
-                if (! typesByCompany[companySelect.value]) typesByCompany[companySelect.value] = [];
-                typesByCompany[companySelect.value].push({ id: data.id, name: data.name });
-                allTypes.push({ id: data.id, name: data.name });
-
-                refreshTypeOptions();
-                typeSelect.value = data.id;
-            })
-            .catch(function () { alert('Could not add the type — please try again.'); });
-    });
 
     refreshTypeOptions();
 });

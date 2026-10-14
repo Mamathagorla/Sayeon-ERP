@@ -95,6 +95,10 @@ class IncrementLetterController extends BaseController
             return redirect()->to('/hr/employees')->with('error', 'Increment letter not found.');
         }
 
+        if (($templated = $this->templatedDocument('increment_letter', $id, true)) !== null) {
+            return $templated;
+        }
+
         return view('App\Modules\HR\increment_letter', [
             'title'     => 'Increment Letter — ' . $letter['user_name'],
             'letter'    => $letter,
@@ -108,6 +112,10 @@ class IncrementLetterController extends BaseController
 
         if ($letter === null || (int) $letter['employee_profile_id'] !== $employeeId || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $letter['company_id'])) {
             return redirect()->to('/hr/employees')->with('error', 'Increment letter not found.');
+        }
+
+        if (($templated = $this->templatedDocument('increment_letter', $id, false)) !== null) {
+            return $templated;
         }
 
         $options = new Options();

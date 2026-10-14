@@ -24,8 +24,8 @@
                     <dt class="col-sm-4">Hosting Provider</dt><dd class="col-sm-8"><?= esc($website['hosting_provider'] ?? '—') ?></dd>
                     <dt class="col-sm-4">Server IP</dt><dd class="col-sm-8"><?= esc($website['server_ip'] ?? '—') ?></dd>
                     <dt class="col-sm-4">DNS Details</dt><dd class="col-sm-8"><?= esc($website['dns_details'] ?? '—') ?></dd>
-                    <dt class="col-sm-4">SSL Expiry</dt><dd class="col-sm-8"><?= $website['ssl_expiry'] ? esc(date('d/m/Y', strtotime($website['ssl_expiry']))) : '—' ?></dd>
-                    <dt class="col-sm-4">Renewal Date</dt><dd class="col-sm-8"><?= $website['renewal_date'] ? esc(date('d/m/Y', strtotime($website['renewal_date']))) : '—' ?></dd>
+                    <dt class="col-sm-4">SSL Expiry</dt><dd class="col-sm-8"><?= $website['ssl_expiry'] ? esc(erp_date($website['ssl_expiry'])) : '—' ?></dd>
+                    <dt class="col-sm-4">Renewal Date</dt><dd class="col-sm-8"><?= $website['renewal_date'] ? esc(erp_date($website['renewal_date'])) : '—' ?></dd>
                     <dt class="col-sm-4">Control Panel</dt><dd class="col-sm-8"><?= esc($website['control_panel'] ?? '—') ?> <?= $website['control_panel_url'] ? '(<a href="' . esc($website['control_panel_url']) . '" target="_blank" rel="noopener">open</a>)' : '' ?></dd>
                     <dt class="col-sm-4">Git Repository</dt><dd class="col-sm-8"><?= esc($website['git_repository'] ?? '—') ?></dd>
                     <dt class="col-sm-4">Notes</dt><dd class="col-sm-8"><?= esc($website['notes'] ?? '—') ?></dd>

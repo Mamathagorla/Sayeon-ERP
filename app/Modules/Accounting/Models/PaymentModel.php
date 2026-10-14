@@ -10,7 +10,7 @@ class PaymentModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'company_id', 'invoice_id', 'bill_id', 'direction', 'amount',
+        'company_id', 'invoice_id', 'bill_id', 'payroll_run_id', 'direction', 'amount',
         'payment_date', 'method', 'reference', 'notes', 'created_by',
     ];
     protected $useTimestamps = false;
@@ -51,6 +51,38 @@ class PaymentModel extends Model
     public function totalForBill(int $billId): float
     {
         return (float) ($this->selectSum('amount')->where('bill_id', $billId)->first()['amount'] ?? 0);
+    }
+
+    /**
+     * invoice_id|bill_id => total paid, for the given ids.
+     *
+     * @param int[] $ids
+     * @return array<int, float>
+     */
+    public function paidMap(string $column, array $ids): array
+    {
+        if ($ids === [] || ! in_array($column, ['invoice_id', 'bill_id'], true)) {
+            return [];
+        }
+
+        $rows = $this->select($column . ' as ref, SUM(amount) as paid')->whereIn($column, $ids)->groupBy($column)->findAll();
+
+        return array_map('floatval', array_column($rows, 'paid', 'ref'));
+    }
+
+    /**
+     * What is still owed on a set of open invoices/bills: sum of (amount - payments received/made), never below
+     * zero per document. $rows need 'id' and 'amount'.
+     */
+    public function outstanding(array $rows, string $column): float
+    {
+        $paid  = $this->paidMap($column, array_map('intval', array_column($rows, 'id')));
+        $total = 0.0;
+        foreach ($rows as $r) {
+            $total += max(0.0, (float) $r['amount'] - ($paid[(int) $r['id']] ?? 0.0));
+        }
+
+        return round($total, 2);
     }
 
     public function cashInOutTotals(?int $companyId, string $from, string $to): array

@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-8">
     <div class="card-body">
-        <form action="<?= $customer ? site_url('customers/' . $customer['id']) : site_url('customers') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Basic Information" action="<?= $customer ? site_url('customers/' . $customer['id']) : site_url('customers') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -38,6 +38,7 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Contact &amp; Tax"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Email <span class="text-muted small">(optional)</span></label>
                     <input type="email" name="email" class="form-control" value="<?= esc($customer['email'] ?? old('email')) ?>">
@@ -61,6 +62,7 @@
                     <label class="form-label">PAN <span class="text-muted small">(optional)</span></label>
                     <input type="text" name="pan" class="form-control" value="<?= esc($customer['pan'] ?? old('pan')) ?>" maxlength="10" style="text-transform:uppercase" pattern="[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}" title="Enter a valid 10-character PAN, e.g. ABCDE1234F">
                 </div>
+                <div class="col-12 erp-section-marker" data-section-title="Location"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Country</label>
                     <select name="country_id" id="customerCountry" class="form-select">

@@ -12,7 +12,7 @@
         <div class="sy-stat-card">
             <div class="sy-stat-icon" style="background:#dcfce7;color:#16a34a"><i class="fas fa-receipt"></i></div>
             <div class="sy-stat-label">MONTHLY-EQUIVALENT TOTAL</div>
-            <div class="sy-stat-value"><?= number_format($monthlyTotal, 2) ?></div>
+            <div class="sy-stat-value"><?= erp_number($monthlyTotal, 2) ?></div>
             <div class="sy-stat-trend text-muted">Active subscriptions, normalized</div>
         </div>
     </div>
@@ -95,11 +95,19 @@
                     </td>
                     <td class="text-muted small"><?= esc($e['company_name']) ?></td>
                     <td class="text-muted small"><?= esc($e['category']) ?></td>
-                    <td class="text-end fw-semibold"><?= number_format($e['amount'], 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number($e['amount'], 2) ?></td>
                     <td class="text-muted small"><?= esc($e['payment_method'] ?: '—') ?></td>
-                    <td class="text-muted small"><?= $e['renewal_date'] ? esc(date('d/m/Y', strtotime($e['renewal_date']))) : '—' ?></td>
+                    <td class="text-muted small"><?= $e['renewal_date'] ? esc(erp_date($e['renewal_date'])) : '—' ?></td>
                     <td><span class="badge bg-<?= $e['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($e['status'])) ?></span></td>
                     <td class="text-end">
+                        <?php if (\App\Modules\Document\Services\DocumentAvailability::shared()->items('expense', (int) $e['company_id'], ['expense' => (int) $e['id']])): ?>
+                        <div class="dropdown d-inline-block">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Documents"><i class="fas fa-file-pdf"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <?= view('App\\Modules\\Document\\partials/doc_workflow_menu', ['workflow' => 'expense', 'companyId' => (int) $e['company_id'], 'context' => ['expense' => (int) $e['id']], 'showEmpty' => false]) ?>
+                            </ul>
+                        </div>
+                        <?php endif; ?>
                         <?php if (can('expense.edit')): ?>
                         <a href="<?= site_url('expenses/' . $e['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>
                         <?php endif; ?>

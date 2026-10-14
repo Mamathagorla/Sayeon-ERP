@@ -19,14 +19,14 @@
 </head>
 <body>
     <h1>Income vs Expense</h1>
-    <div class="meta">Period <?= esc(date('d/m/Y', strtotime($from))) ?> to <?= esc(date('d/m/Y', strtotime($to))) ?> &middot; Generated <?= esc($generatedAt) ?></div>
+    <div class="meta">Period <?= esc(erp_date($from)) ?> to <?= esc(erp_date($to)) ?> &middot; Generated <?= esc($generatedAt) ?></div>
 
     <table class="summary">
         <tr>
-            <td><strong>Total Income:</strong> <?= number_format($totalIncome, 2) ?></td>
-            <td><strong>Total Expenses:</strong> <?= number_format($totalExpenses, 2) ?></td>
-            <td><strong>Net Difference:</strong> <span class="<?= $netDifference >= 0 ? 'positive' : 'negative' ?>"><?= number_format($netDifference, 2) ?></span></td>
-            <td><strong>Expense Ratio:</strong> <?= $expenseRatio === null ? '—' : number_format($expenseRatio, 1) . '%' ?></td>
+            <td><strong>Total Income:</strong> <?= erp_number($totalIncome, 2) ?></td>
+            <td><strong>Total Expenses:</strong> <?= erp_number($totalExpenses, 2) ?></td>
+            <td><strong>Net Difference:</strong> <span class="<?= $netDifference >= 0 ? 'positive' : 'negative' ?>"><?= erp_number($netDifference, 2) ?></span></td>
+            <td><strong>Expense Ratio:</strong> <?= $expenseRatio === null ? '—' : erp_number($expenseRatio, 1) . '%' ?></td>
         </tr>
     </table>
 
@@ -38,14 +38,14 @@
             <?php foreach ($rows as $r): ?>
             <tr>
                 <td><?= esc($r['label']) ?></td>
-                <td class="right positive">+<?= number_format($r['income'], 2) ?></td>
-                <td class="right negative">-<?= number_format($r['expense'], 2) ?></td>
-                <td class="right <?= $r['difference'] >= 0 ? 'positive' : 'negative' ?>"><?= $r['difference'] >= 0 ? '+' : '' ?><?= number_format($r['difference'], 2) ?></td>
+                <td class="right positive">+<?= erp_number($r['income'], 2) ?></td>
+                <td class="right negative">-<?= erp_number($r['expense'], 2) ?></td>
+                <td class="right <?= $r['difference'] >= 0 ? 'positive' : 'negative' ?>"><?= $r['difference'] >= 0 ? '+' : '' ?><?= erp_number($r['difference'], 2) ?></td>
                 <td class="right"><?php
                     if ($r['trend']['state'] === 'new') {
                         echo 'New';
                     } elseif ($r['trend']['state'] === 'percent') {
-                        echo ($r['trend']['percent'] >= 0 ? '+' : '') . number_format($r['trend']['percent'], 1) . '%';
+                        echo ($r['trend']['percent'] >= 0 ? '+' : '') . erp_number($r['trend']['percent'], 1) . '%';
                     } else {
                         echo '—';
                     }
@@ -54,9 +54,9 @@
             <?php endforeach; ?>
             <tr class="total">
                 <td>Total</td>
-                <td class="right"><?= number_format($totalIncome, 2) ?></td>
-                <td class="right"><?= number_format($totalExpenses, 2) ?></td>
-                <td class="right"><?= number_format($netDifference, 2) ?></td>
+                <td class="right"><?= erp_number($totalIncome, 2) ?></td>
+                <td class="right"><?= erp_number($totalExpenses, 2) ?></td>
+                <td class="right"><?= erp_number($netDifference, 2) ?></td>
                 <td class="right"></td>
             </tr>
         </tbody>

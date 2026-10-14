@@ -66,9 +66,9 @@
                     <td><a href="<?= site_url('accounting/bills/' . $b['id']) ?>"><?= esc($b['bill_number']) ?></a></td>
                     <td><?= esc($b['company_name']) ?></td>
                     <td><?= esc($b['vendor_name']) ?></td>
-                    <td><?= esc(date('d/m/Y', strtotime($b['issue_date']))) ?></td>
-                    <td><?= $b['due_date'] ? esc(date('d/m/Y', strtotime($b['due_date']))) : '—' ?></td>
-                    <td class="text-end"><?= number_format($b['amount'], 2) ?></td>
+                    <td><?= esc(erp_date($b['issue_date'])) ?></td>
+                    <td><?= $b['due_date'] ? esc(erp_date($b['due_date'])) : '—' ?></td>
+                    <td class="text-end"><?= erp_number($b['amount'], 2) ?></td>
                     <td><span class="badge bg-<?= ['unpaid' => 'secondary', 'partially_paid' => 'warning', 'paid' => 'success', 'overdue' => 'danger', 'cancelled' => 'dark'][$b['status']] ?>"><?= esc(ucwords(str_replace('_', ' ', $b['status']))) ?></span></td>
                 </tr>
             <?php endforeach; ?>

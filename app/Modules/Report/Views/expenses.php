@@ -13,7 +13,7 @@
         <div class="sy-stat-card">
             <div class="sy-stat-icon" style="background:#dcfce7;color:#16a34a"><i class="fas fa-calendar-check"></i></div>
             <div class="sy-stat-label">TOTAL EXPENSES</div>
-            <div class="sy-stat-value fs-4"><?= number_format($total, 2) ?></div>
+            <div class="sy-stat-value fs-4"><?= erp_number($total, 2) ?></div>
             <div class="sy-stat-trend text-muted">As of <?= esc($periodLabel) ?></div>
         </div>
     </div>
@@ -22,14 +22,14 @@
             <div class="sy-stat-icon" style="background:#dbeafe;color:#2563eb"><i class="fas fa-table-cells"></i></div>
             <div class="sy-stat-label">HIGHEST CATEGORY</div>
             <div class="sy-stat-value fs-4"><?= $topCategory ? esc($topCategory) : '—' ?></div>
-            <div class="sy-stat-trend text-muted"><?= $topCategory ? number_format($byCategory[$topCategory], 2) . ' spent' : 'No expenses yet' ?></div>
+            <div class="sy-stat-trend text-muted"><?= $topCategory ? erp_number($byCategory[$topCategory], 2) . ' spent' : 'No expenses yet' ?></div>
         </div>
     </div>
     <div class="col">
         <div class="sy-stat-card">
             <div class="sy-stat-icon" style="background:#ffedd5;color:#d97706"><i class="fas fa-chart-column"></i></div>
             <div class="sy-stat-label">AVERAGE EXPENSE</div>
-            <div class="sy-stat-value fs-4"><?= number_format(count($expenses) > 0 ? $total / count($expenses) : 0, 2) ?></div>
+            <div class="sy-stat-value fs-4"><?= erp_number(count($expenses) > 0 ? $total / count($expenses) : 0, 2) ?></div>
             <div class="sy-stat-trend text-muted"><?= count($expenses) ?> record(s)</div>
         </div>
     </div>
@@ -125,7 +125,7 @@
                         <div class="text-muted small"><?= esc($e['company_name']) ?> &middot; <?= esc(ucfirst($e['billing_cycle'])) ?></div>
                     </td>
                     <td class="text-muted small"><?= esc($e['category']) ?></td>
-                    <td class="text-end fw-semibold"><?= number_format($e['amount'], 2) ?></td>
+                    <td class="text-end fw-semibold"><?= erp_number($e['amount'], 2) ?></td>
                     <td class="text-muted small"><?= esc($e['payment_method'] ?? '—') ?></td>
                     <td class="text-muted small"><?= esc($e['renewal_date'] ?? '—') ?></td>
                     <td><span class="badge bg-<?= $e['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($e['status'])) ?></span></td>

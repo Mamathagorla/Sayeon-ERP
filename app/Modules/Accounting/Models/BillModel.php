@@ -14,7 +14,7 @@ class BillModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'company_id', 'bill_number', 'vendor_name', 'vendor_gstin', 'vendor_address', 'amount',
+        'company_id', 'purchase_order_id', 'bill_number', 'vendor_name', 'vendor_gstin', 'vendor_address', 'amount',
         'gst_type', 'gst_percent', 'discount_percent', 'subtotal',
         'discount_amount', 'cgst_amount', 'sgst_amount', 'igst_amount',
         'issue_date', 'due_date', 'status', 'notes', 'created_by',

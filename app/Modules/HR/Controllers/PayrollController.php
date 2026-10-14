@@ -36,8 +36,8 @@ class PayrollController extends BaseController
 
     public function index()
     {
-        $runs         = $this->runModel->listAll();
         $companyScope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
+        $runs         = $this->runModel->listAll($companyScope);
         $summary      = $this->runSummary($runs);
 
         return view('App\Modules\HR\payroll/index', [
@@ -143,32 +143,64 @@ class PayrollController extends BaseController
         $month = (int) $this->request->getPost('month');
         $year  = (int) $this->request->getPost('year');
 
-        if ($this->runModel->forPeriod($month, $year) !== null) {
-            return redirect()->to('/hr/payroll')->with('error', 'A payroll run for this period already exists.');
-        }
-
-        // HR Manager (or Company Admin) only pays their own company's
-        // staff — Super Admin's "All Companies" keeps the org-wide run.
+        // HR Manager (or Company Admin) only pays their own company's staff; Super Admin's "All Companies" pays every
+        // company, as one run per company (payroll is per company - each has its own run for a month).
         $payable = $this->structureModel->payableUsers($this->companyScopeFor(self::COMPANY_SCOPED_ROLES));
 
         if (empty($payable)) {
             return redirect()->to('/hr/payroll')->with('error', 'No employees have a salary structure configured yet.');
         }
 
+        $byCompany = [];
+        foreach ($payable as $s) {
+            $byCompany[(int) $s['company_id']][] = $s;
+        }
+
+        $created  = [];
+        $existing = 0;
+        foreach ($byCompany as $companyId => $rows) {
+            if ($this->runModel->forPeriod($month, $year, $companyId) !== null) {
+                $existing++;
+
+                continue;
+            }
+
+            $created[] = $this->processRun($companyId, $month, $year, $rows);
+        }
+
+        if ($created === []) {
+            return redirect()->to('/hr/payroll')->with('error', 'A payroll run for this period already exists.');
+        }
+
+        $paid = array_sum(array_column($created, 'employees'));
+
+        return redirect()->to('/hr/payroll/' . $created[0]['runId'])->with('success', 'Payroll generated for ' . $paid . ' employee(s)' . ($existing > 0 ? ' (' . $existing . ' company run(s) for this period already existed and were left untouched)' : '') . '.');
+    }
+
+    /**
+     * One company's payroll run for a month: the run, a payslip per employee (with Loss-of-Pay from attendance and
+     * unpaid leave) and a notification each - all in one transaction so a failure leaves nothing half-created.
+     *
+     * Attendance/Leave -> Payroll integration: Loss-of-Pay days are this month's unapproved absences
+     * (attendance.status='absent') plus approved leave on an unpaid leave type (leave_types.is_paid = 0). Approved
+     * leave on a paid type, holidays and week-offs never count.
+     *
+     * @return array{runId:int, employees:int}
+     */
+    private function processRun(int $companyId, int $month, int $year, array $payable): array
+    {
+        $db = db_connect();
+        $db->transStart();
+
         $runId = $this->runModel->insert([
-            'month'      => $month,
-            'year'       => $year,
-            'status'     => 'processed',
+            'company_id'   => $companyId,
+            'month'        => $month,
+            'year'         => $year,
+            'status'       => 'processed',
             'processed_at' => date('Y-m-d H:i:s'),
-            'created_by' => $this->currentUserId(),
+            'created_by'   => $this->currentUserId(),
         ]);
 
-        // Attendance/Leave -> Payroll integration: Loss-of-Pay days are
-        // this month's unapproved absences (attendance.status='absent')
-        // plus approved leave on an unpaid leave type (leave_types.
-        // is_paid = 0 — see AddIsPaidToLeaveTypes). Approved leave on a
-        // paid type, holidays and week-offs never count — only these two
-        // sources do, matching how "LOP" is normally defined.
         $daysInMonth = (int) date('t', mktime(0, 0, 0, $month, 1, $year));
 
         foreach ($payable as $s) {
@@ -204,9 +236,15 @@ class PayrollController extends BaseController
             );
         }
 
-        $this->logActivity('payroll', 'create', $runId, 'Generated payroll run for ' . $month . '/' . $year . ' (' . count($payable) . ' employees)');
+        $db->transComplete();
 
-        return redirect()->to('/hr/payroll/' . $runId)->with('success', 'Payroll generated for ' . count($payable) . ' employee(s).');
+        if (! $db->transStatus()) {
+            throw new \RuntimeException('Payroll could not be generated. Nothing was saved.');
+        }
+
+        $this->logActivity('payroll', 'create', $runId, 'Generated payroll run for ' . $month . '/' . $year . ' (' . count($payable) . ' employees, company #' . $companyId . ')');
+
+        return ['runId' => (int) $runId, 'employees' => count($payable)];
     }
 
     public function show(int $id)
@@ -220,7 +258,7 @@ class PayrollController extends BaseController
 
         $run = $this->runModel->find($id);
 
-        if ($run === null) {
+        if ($run === null || ! $this->runModel->isVisibleTo($run, $this->companyScopeFor(self::COMPANY_SCOPED_ROLES))) {
             return redirect()->to('/hr/payroll')->with('error', 'Payroll run not found.');
         }
 
@@ -232,16 +270,65 @@ class PayrollController extends BaseController
         ]);
     }
 
+    /**
+     * Closes a run and books the money out in Accounting: one "payroll" payment (direction out) per company for the net
+     * salaries of its payslips. Repeating the action is a no-op (the run is already paid; the payment is unique per
+     * run + company), so a double click cannot book salaries twice.
+     */
     public function markPaid(int $id)
     {
-        if ($this->runModel->find($id) === null) {
+        $run   = $this->runModel->find($id);
+        $scope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
+
+        // A company-scoped viewer may only close their own company's run; a legacy org-wide run (several companies in
+        // one run) can only be closed by an unrestricted viewer.
+        if ($run === null || ! $this->runModel->isVisibleTo($run, $scope) || ($scope !== null && $run['company_id'] === null)) {
             return redirect()->to('/hr/payroll')->with('error', 'Payroll run not found.');
         }
 
-        $this->runModel->update($id, ['status' => 'paid']);
+        if ($run['status'] === 'paid') {
+            return redirect()->to('/hr/payroll/' . $id)->with('success', 'This payroll run is already marked as paid.');
+        }
+
+        $db = db_connect();
+        $db->transStart();
+
+        $this->runModel->update($id, ['status' => 'paid', 'paid_at' => date('Y-m-d H:i:s')]);
+
+        $totals = $db->table('payslips ps')->select('ep.company_id, SUM(ps.net) AS total')
+            ->join('employee_profiles ep', 'ep.user_id = ps.user_id')
+            ->where('ps.payroll_run_id', $id)->groupBy('ep.company_id')->get()->getResultArray();
+
+        $payments = new \App\Modules\Accounting\Models\PaymentModel();
+        $label    = $this->monthOptions()[(int) $run['month']] . ' ' . $run['year'];
+        foreach ($totals as $t) {
+            $exists = $payments->where('payroll_run_id', $id)->where('company_id', (int) $t['company_id'])->countAllResults() > 0;
+            if ((float) $t['total'] <= 0 || $exists) {
+                continue;
+            }
+
+            $payments->insert([
+                'company_id'     => (int) $t['company_id'],
+                'payroll_run_id' => $id,
+                'direction'      => 'out',
+                'amount'         => round((float) $t['total'], 2),
+                'payment_date'   => date('Y-m-d'),
+                'method'         => 'payroll',
+                'reference'      => sprintf('PAYROLL-%04d-%02d', $run['year'], $run['month']),
+                'notes'          => 'Net salaries for ' . $label,
+                'created_by'     => $this->currentUserId(),
+            ]);
+        }
+
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return redirect()->to('/hr/payroll/' . $id)->with('error', 'Could not mark the payroll run as paid. Nothing was saved.');
+        }
+
         $this->logActivity('payroll', 'update', $id, 'Marked payroll run #' . $id . ' as paid');
 
-        return redirect()->to('/hr/payroll/' . $id)->with('success', 'Payroll run marked as paid.');
+        return redirect()->to('/hr/payroll/' . $id)->with('success', 'Payroll run marked as paid and recorded in Accounting.');
     }
 
     public function myPayslips()
@@ -266,6 +353,10 @@ class PayrollController extends BaseController
             return redirect()->to('/hr/payroll/my-payslips')->with('error', 'You do not have permission to view this payslip.');
         }
 
+        if (($templated = $this->templatedDocument('payslip', $id, true)) !== null) {
+            return $templated;
+        }
+
         return view('App\Modules\HR\payroll/payslip', [
             'title'     => 'Payslip - ' . $this->monthOptions()[$payslip['month']] . ' ' . $payslip['year'],
             'navActive' => 'hr-payroll',
@@ -284,6 +375,10 @@ class PayrollController extends BaseController
 
         if ((int) $payslip['user_id'] !== (int) $this->currentUserId() && (! can('payroll.edit') || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $this->employeeCompanyId((int) $payslip['user_id'])))) {
             return redirect()->to('/hr/payroll/my-payslips')->with('error', 'You do not have permission to view this payslip.');
+        }
+
+        if (($templated = $this->templatedDocument('payslip', $id, false)) !== null) {
+            return $templated;
         }
 
         $options = new Options();

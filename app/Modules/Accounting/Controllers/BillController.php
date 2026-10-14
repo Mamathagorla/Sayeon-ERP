@@ -5,6 +5,7 @@ namespace App\Modules\Accounting\Controllers;
 use App\Controllers\BaseController;
 use App\Modules\Accounting\Models\BillItemModel;
 use App\Modules\Accounting\Models\BillModel;
+use App\Modules\Purchase\Models\PurchaseOrderModel;
 use App\Modules\Accounting\Models\PaymentModel;
 use App\Modules\Company\Models\CompanyModel;
 use Dompdf\Dompdf;
@@ -61,6 +62,10 @@ class BillController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only record bills for your own company.');
         }
 
+        if (($poError = $this->purchaseOrderError()) !== null) {
+            return redirect()->back()->withInput()->with('error', $poError);
+        }
+
         $items = $this->parseItems();
 
         if ($items === null) {
@@ -86,6 +91,7 @@ class BillController extends BaseController
         $id = $this->billModel->insert($this->payload(true, $totals));
         $this->itemModel->replaceForBill($id, $totals['items']);
         $this->logActivity('accounting', 'create', $id, 'Created bill ' . $this->request->getPost('bill_number'));
+        (new PurchaseOrderModel())->syncPaymentStatus($this->request->getPost('purchase_order_id') ? (int) $this->request->getPost('purchase_order_id') : null);
 
         return redirect()->to('/accounting/bills/' . $id)->with('success', 'Bill created.');
     }
@@ -120,6 +126,10 @@ class BillController extends BaseController
             return redirect()->to('/accounting/bills')->with('error', 'Bill not found.');
         }
 
+        if (($templated = $this->templatedDocument('bill', $id, true)) !== null) {
+            return $templated;
+        }
+
         return view('App\Modules\Accounting\bills/print', $data);
     }
 
@@ -133,6 +143,10 @@ class BillController extends BaseController
 
         if ($bill === null) {
             return redirect()->to('/accounting/bills')->with('error', 'Bill not found.');
+        }
+
+        if (($templated = $this->templatedDocument('bill', $id, false)) !== null) {
+            return $templated;
         }
 
         $options = new Options();
@@ -204,6 +218,10 @@ class BillController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only assign bills to your own company.');
         }
 
+        if (($poError = $this->purchaseOrderError()) !== null) {
+            return redirect()->back()->withInput()->with('error', $poError);
+        }
+
         $items = $this->parseItems();
 
         if ($items === null) {
@@ -224,7 +242,16 @@ class BillController extends BaseController
         $this->billModel->skipValidation(true);
         $this->billModel->update($id, $this->payload(false, $totals));
         $this->itemModel->replaceForBill($id, $totals['items']);
+
+        // Keep the status consistent with what was actually paid if the total changed after payments.
+        $paid = (new \App\Modules\Accounting\Models\PaymentModel())->totalForBill($id);
+        if ($paid > 0 && (string) ($this->request->getPost('status') ?: 'unpaid') !== 'cancelled') {
+            $this->billModel->update($id, ['status' => $paid >= (float) $totals['amount'] ? 'paid' : 'partially_paid']);
+        }
         $this->logActivity('accounting', 'update', $id, 'Updated bill #' . $id);
+        $poModel = new PurchaseOrderModel();
+        $poModel->syncPaymentStatus(($bill['purchase_order_id'] ?? null) ? (int) $bill['purchase_order_id'] : null);   // the order it used to settle
+        $poModel->syncPaymentStatus($this->request->getPost('purchase_order_id') ? (int) $this->request->getPost('purchase_order_id') : null);
 
         return redirect()->to('/accounting/bills/' . $id)->with('success', 'Bill updated.');
     }
@@ -237,10 +264,45 @@ class BillController extends BaseController
             return redirect()->to('/accounting/bills')->with('error', 'Bill not found.');
         }
 
+        // Deleting would also delete (FK cascade) the payments made against it and so rewrite the cash ledger.
+        if ((new \App\Modules\Accounting\Models\PaymentModel())->where('bill_id', $id)->countAllResults() > 0) {
+            return redirect()->to('/accounting/bills/' . $id)->with('error', 'This bill has payments recorded against it and cannot be deleted. Set its status to Cancelled instead.');
+        }
+
         $this->billModel->delete($id);
         $this->logActivity('accounting', 'delete', $id, 'Deleted bill #' . $id);
+        (new PurchaseOrderModel())->syncPaymentStatus(($bill['purchase_order_id'] ?? null) ? (int) $bill['purchase_order_id'] : null);
 
         return redirect()->to('/accounting/bills')->with('success', 'Bill deleted.');
+    }
+
+    /** Approved purchase orders (any company in the viewer's scope) that a bill may settle. */
+    private function approvedOrdersInScope(): array
+    {
+        $builder = db_connect()->table('purchase_orders po')->select('po.id, po.po_number, po.company_id, po.amount, v.name as vendor_name')
+            ->join('vendors v', 'v.id = po.vendor_id')->where('po.approval_status', 'approved')->orderBy('po.id', 'DESC');
+
+        $scope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
+        if ($scope !== null) {
+            $builder->where('po.company_id', $scope);
+        }
+
+        return $builder->get()->getResultArray();
+    }
+
+    /** A linked purchase order must be an approved order of the bill's own company. */
+    private function purchaseOrderError(): ?string
+    {
+        $poId = (int) $this->request->getPost('purchase_order_id');
+        if ($poId === 0) {
+            return null;
+        }
+
+        $po = (new PurchaseOrderModel())->find($poId);
+
+        return ($po !== null && $po['approval_status'] === 'approved' && (int) $po['company_id'] === (int) $this->request->getPost('company_id'))
+            ? null
+            : 'Choose an approved purchase order of the same company, or leave it blank.';
     }
 
     private function formData(?array $bill): array
@@ -254,6 +316,7 @@ class BillController extends BaseController
             'statuses'   => BillModel::STATUSES,
             'gstTypes'   => BillModel::GST_TYPES,
             'nextNumber' => $bill['bill_number'] ?? $this->billModel->nextBillNumber(),
+            'purchaseOrders' => $this->approvedOrdersInScope(),
         ];
     }
 
@@ -261,6 +324,7 @@ class BillController extends BaseController
     {
         $data = [
             'company_id'       => (int) $this->request->getPost('company_id'),
+            'purchase_order_id' => $this->request->getPost('purchase_order_id') ?: null,
             'bill_number'      => $this->request->getPost('bill_number'),
             'vendor_name'      => $this->request->getPost('vendor_name'),
             'vendor_gstin'     => $this->request->getPost('vendor_gstin') ?: null,

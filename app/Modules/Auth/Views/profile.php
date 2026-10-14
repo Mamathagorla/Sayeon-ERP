@@ -31,6 +31,25 @@
                         <label class="form-label">Phone</label>
                         <input type="text" name="phone" class="form-control" value="<?= esc($user['phone']) ?>" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">My timezone</label>
+                        <select name="timezone" class="form-select">
+                            <option value="">Organization default (<?= esc(str_replace('_', ' ', $orgTimezone)) ?>)</option>
+                            <?php foreach ($timezones as $tz): ?>
+                                <option value="<?= esc($tz) ?>" <?= ($user['timezone'] ?? '') === $tz ? 'selected' : '' ?>><?= esc(str_replace('_', ' ', $tz)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Dates and times are shown in this timezone for you.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">My locale</label>
+                        <select name="locale" class="form-select">
+                            <option value="">Organization default (<?= esc($orgLocale) ?>)</option>
+                            <?php foreach ($locales as $code => $label): ?>
+                                <option value="<?= esc($code) ?>" <?= ($user['locale'] ?? '') === $code ? 'selected' : '' ?>><?= esc($label) ?> — <?= esc($code) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </form>
             </div>

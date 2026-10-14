@@ -116,7 +116,7 @@ $empTypeLabels = ['full_time' => 'Full Time', 'part_time' => 'Part Time', 'contr
     </div>
 
     <div class="letter-meta">
-        <div class="date">Date: <?= esc(date('d/m/Y')) ?></div>
+        <div class="date">Date: <?= esc(erp_date(date('Y-m-d'))) ?></div>
         <div>To,</div>
         <div><?= esc($record['candidate_name']) ?></div>
         <?php if (! empty($record['candidate_email'])): ?><div><?= esc($record['candidate_email']) ?></div><?php endif; ?>
@@ -146,14 +146,14 @@ $empTypeLabels = ['full_time' => 'Full Time', 'part_time' => 'Part Time', 'contr
             <?php if (! empty($record['manager_name'])): ?>
             <div class="detail-row"><span class="k">Reporting Manager</span><span><?= esc($record['manager_name']) ?></span></div>
             <?php endif; ?>
-            <div class="detail-row"><span class="k">Joining Date</span><span><?= ! empty($record['joining_date']) ? esc(date('d/m/Y', strtotime($record['joining_date']))) : '—' ?></span></div>
+            <div class="detail-row"><span class="k">Joining Date</span><span><?= ! empty($record['joining_date']) ? esc(erp_date($record['joining_date'])) : '—' ?></span></div>
         </div>
 
         <h3>Compensation</h3>
         <?php if ($record['offered_ctc'] !== null): ?>
-        <p>Your annual CTC will be &#8377; <?= number_format((float) $record['offered_ctc'], 2) ?>.</p>
+        <p>Your annual CTC will be <?= erp_money((float) $record['offered_ctc']) ?>.</p>
         <div class="ctc-box">
-            <div class="ctc-row"><span class="k">Annual CTC</span><span>&#8377; <?= number_format((float) $record['offered_ctc'], 2) ?></span></div>
+            <div class="ctc-row"><span class="k">Annual CTC</span><span><?= erp_money((float) $record['offered_ctc']) ?></span></div>
         </div>
         <p style="color:var(--muted);"><em>The detailed salary structure will be provided separately.</em></p>
         <?php else: ?>

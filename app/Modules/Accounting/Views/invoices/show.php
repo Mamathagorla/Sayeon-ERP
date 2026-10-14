@@ -1,17 +1,33 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('pageActions') ?>
-<a href="<?= site_url('accounting/invoices/' . $invoice['id'] . '/print') ?>" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i>Print</a>
-<a href="<?= site_url('accounting/invoices/' . $invoice['id'] . '/pdf') ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-file-pdf me-1"></i>Download PDF</a>
-<?php if (can('invoice.edit')): ?>
-<a href="<?= site_url('accounting/invoices/' . $invoice['id'] . '/edit') ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
-<?php endif; ?>
-<?php if (can('invoice.delete')): ?>
-<form action="<?= site_url('accounting/invoices/' . $invoice['id'] . '/delete') ?>" method="post" class="d-inline" onsubmit="return confirm('Delete this invoice?');">
-    <?= csrf_field() ?>
-    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1"></i>Delete</button>
-</form>
-<?php endif; ?>
+<?php $hasCompanyTemplate = (new \App\Modules\Document\Services\TemplatedDocument())->hasActive('invoice', (int) $invoice['company_id']); ?>
+<div class="dropdown d-inline-block">
+    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions" title="Actions"><i class="fas fa-ellipsis-v px-1"></i></button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="<?= site_url('accounting/invoices/' . $invoice['id'] . '/print') ?>" target="_blank"><i class="fas fa-print me-2 text-muted"></i>Print</a></li>
+        <li><a class="dropdown-item" href="<?= site_url('accounting/invoices/' . $invoice['id'] . '/pdf') ?>"><i class="fas fa-file-pdf me-2 text-muted"></i>Download PDF</a></li>
+        <?php if (! $hasCompanyTemplate): ?>
+        <li><span class="dropdown-item-text small text-muted" style="max-width:240px;white-space:normal;">No invoice template for <?= esc($invoice['company_name']) ?> yet — the standard layout is used.</span></li>
+        <?php if (can('document.create')): ?>
+        <li><a class="dropdown-item" href="<?= site_url('documents/templates/create?company_id=' . (int) $invoice['company_id'] . '&document_type=invoice') ?>"><i class="fas fa-upload me-2 text-muted"></i>Upload company template</a></li>
+        <?php endif; ?>
+        <?php endif; ?>
+        <?php if (can('invoice.edit')): ?>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="<?= site_url('accounting/invoices/' . $invoice['id'] . '/edit') ?>"><i class="fas fa-pen me-2 text-muted"></i>Edit</a></li>
+        <?php endif; ?>
+        <?php if (can('invoice.delete')): ?>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <form action="<?= site_url('accounting/invoices/' . $invoice['id'] . '/delete') ?>" method="post" onsubmit="return confirm('Delete this invoice?');">
+                <?= csrf_field() ?>
+                <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i>Delete</button>
+            </form>
+        </li>
+        <?php endif; ?>
+    </ul>
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -49,7 +65,7 @@
                         <?php if (! empty($company['gst'])): ?>
                         <div class="inv-meta-row"><span class="k">Company GSTIN</span><span class="v"><?= esc($company['gst']) ?></span></div>
                         <?php endif; ?>
-                        <div class="inv-meta-row"><span class="k">Issue Date</span><span class="v"><?= esc(date('d/m/Y', strtotime($invoice['issue_date']))) ?></span></div>
+                        <div class="inv-meta-row"><span class="k">Issue Date</span><span class="v"><?= esc(erp_date($invoice['issue_date'])) ?></span></div>
                         <div class="inv-meta-row"><span class="k">Due Date</span><span class="v <?= $invoice['due_date'] ? '' : 'muted' ?>"><?= esc($invoice['due_date'] ?? '—') ?></span></div>
                         <div class="inv-meta-row"><span class="k">Notes</span><span class="v <?= $invoice['notes'] ? '' : 'muted' ?>"><?= esc($invoice['notes'] ?? '—') ?></span></div>
                     </div>
@@ -77,9 +93,9 @@
                         <?php foreach ($items as $item): ?>
                         <tr>
                             <td><?= esc($item['description']) ?></td>
-                            <td class="text-end"><?= rtrim(rtrim(number_format((float) $item['quantity'], 2), '0'), '.') ?></td>
-                            <td class="text-end"><?= number_format((float) $item['rate'], 2) ?></td>
-                            <td class="text-end"><?= number_format((float) $item['amount'], 2) ?></td>
+                            <td class="text-end"><?= rtrim(rtrim(erp_number((float) $item['quantity'], 2), '0'), '.') ?></td>
+                            <td class="text-end"><?= erp_number((float) $item['rate'], 2) ?></td>
+                            <td class="text-end"><?= erp_number((float) $item['amount'], 2) ?></td>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -91,20 +107,20 @@
         <div class="card mb-3">
             <div class="card-body">
                 <div class="inv-totals">
-                    <div class="inv-meta-row"><span class="k">Subtotal</span><span class="v"><?= number_format((float) $invoice['subtotal'], 2) ?></span></div>
+                    <div class="inv-meta-row"><span class="k">Subtotal</span><span class="v"><?= erp_number((float) $invoice['subtotal'], 2) ?></span></div>
                     <?php if ((float) $invoice['discount_amount'] > 0): ?>
-                    <div class="inv-meta-row"><span class="k">Discount (<?= rtrim(rtrim(number_format((float) $invoice['discount_percent'], 2), '0'), '.') ?>%)</span><span class="v">- <?= number_format((float) $invoice['discount_amount'], 2) ?></span></div>
+                    <div class="inv-meta-row"><span class="k">Discount (<?= rtrim(rtrim(erp_number((float) $invoice['discount_percent'], 2), '0'), '.') ?>%)</span><span class="v">- <?= erp_number((float) $invoice['discount_amount'], 2) ?></span></div>
                     <?php endif; ?>
                     <?php if ((float) $invoice['cgst_amount'] > 0): ?>
-                    <div class="inv-meta-row"><span class="k">CGST</span><span class="v"><?= number_format((float) $invoice['cgst_amount'], 2) ?></span></div>
-                    <div class="inv-meta-row"><span class="k">SGST</span><span class="v"><?= number_format((float) $invoice['sgst_amount'], 2) ?></span></div>
+                    <div class="inv-meta-row"><span class="k">CGST</span><span class="v"><?= erp_number((float) $invoice['cgst_amount'], 2) ?></span></div>
+                    <div class="inv-meta-row"><span class="k">SGST</span><span class="v"><?= erp_number((float) $invoice['sgst_amount'], 2) ?></span></div>
                     <?php endif; ?>
                     <?php if ((float) $invoice['igst_amount'] > 0): ?>
-                    <div class="inv-meta-row"><span class="k">IGST</span><span class="v"><?= number_format((float) $invoice['igst_amount'], 2) ?></span></div>
+                    <div class="inv-meta-row"><span class="k">IGST</span><span class="v"><?= erp_number((float) $invoice['igst_amount'], 2) ?></span></div>
                     <?php endif; ?>
-                    <div class="inv-meta-row grand"><span class="k">Grand Total</span><span class="v"><?= number_format((float) $invoice['amount'], 2) ?></span></div>
-                    <div class="inv-meta-row"><span class="k">Paid</span><span class="v"><?= number_format($paid, 2) ?></span></div>
-                    <div class="inv-meta-row balance"><span class="k">Balance Due</span><span class="v"><?= number_format($balance, 2) ?></span></div>
+                    <div class="inv-meta-row grand"><span class="k">Grand Total</span><span class="v"><?= erp_number((float) $invoice['amount'], 2) ?></span></div>
+                    <div class="inv-meta-row"><span class="k">Paid</span><span class="v"><?= erp_number($paid, 2) ?></span></div>
+                    <div class="inv-meta-row balance"><span class="k">Balance Due</span><span class="v"><?= erp_number($balance, 2) ?></span></div>
                 </div>
             </div>
         </div>
@@ -120,10 +136,10 @@
                     <tbody>
                     <?php foreach ($payments as $p): ?>
                         <tr>
-                            <td><?= esc(date('d/m/Y', strtotime($p['payment_date']))) ?></td>
+                            <td><?= esc(erp_date($p['payment_date'])) ?></td>
                             <td><?= esc($p['method'] ?? '—') ?></td>
                             <td><?= esc($p['reference'] ?? '—') ?></td>
-                            <td class="text-end"><?= number_format($p['amount'], 2) ?></td>
+                            <td class="text-end"><?= erp_number($p['amount'], 2) ?></td>
                             <td class="text-end">
                                 <?php if (can('invoice.edit')): ?>
                                 <form action="<?= site_url('accounting/payments/' . $p['id'] . '/delete') ?>" method="post" onsubmit="return confirm('Remove this payment?');">

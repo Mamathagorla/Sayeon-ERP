@@ -57,7 +57,7 @@ class MeetingProviders extends BaseConfig
     {
         parent::__construct();
 
-        $this->googleOAuthClientId     = env('meetingProviders.googleOAuthClientId', '');
+        $this->googleOAuthClientId    = env('meetingProviders.googleOAuthClientId', '');
         $this->googleOAuthClientSecret = env('meetingProviders.googleOAuthClientSecret', '');
         // Left as the raw env value (possibly '') rather than defaulted
         // here — Config classes can be constructed before the url

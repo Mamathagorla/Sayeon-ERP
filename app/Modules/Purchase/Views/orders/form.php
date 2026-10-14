@@ -6,7 +6,7 @@
         <?php if (empty($vendors)): ?>
         <div class="alert alert-warning small">No vendors found for this company yet. <a href="<?= site_url('vendors/create') ?>">Add a vendor</a> first.</div>
         <?php endif; ?>
-        <form action="<?= $order ? site_url('purchase-orders/' . $order['id']) : site_url('purchase-orders') ?>" method="post">
+        <form data-erp-sections="headings" data-erp-first-section="Request Details" action="<?= $order ? site_url('purchase-orders/' . $order['id']) : site_url('purchase-orders') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <?php if (! $order): ?>

@@ -52,7 +52,7 @@
                     <td class="text-muted small"><?= esc($categoryLabels[$t['category']] ?? 'General') ?></td>
                     <td><span class="badge bg-<?= ['low' => 'secondary', 'medium' => 'info text-dark', 'high' => 'danger'][$t['priority']] ?>"><?= esc(ucfirst($t['priority'])) ?></span></td>
                     <td><span class="badge bg-<?= ['open' => 'warning text-dark', 'in_progress' => 'info text-dark', 'resolved' => 'success', 'closed' => 'secondary'][$t['status']] ?>"><?= esc(ucwords(str_replace('_', ' ', $t['status']))) ?></span></td>
-                    <td class="text-muted small"><?= esc(date('d/m/Y', strtotime($t['created_at']))) ?></td>
+                    <td class="text-muted small"><?= esc(erp_date($t['created_at'])) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

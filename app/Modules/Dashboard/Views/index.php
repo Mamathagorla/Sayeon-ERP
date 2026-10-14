@@ -97,7 +97,7 @@ $priorityBadge = ['High' => 'danger', 'Medium' => 'warning', 'Low' => 'secondary
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <p class="text-muted mb-0">Welcome back, <strong><?= esc(session('userName')) ?></strong>! Here's what's happening today.</p>
-    <span class="sy-week-chip"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc($weekRangeLabel) ?></span>
+    <button type="button" class="sy-week-chip" data-erp-calendar="<?= esc(date('Y-m-d', strtotime('monday this week')) . ',' . date('Y-m-d', strtotime('sunday this week'))) ?>" aria-haspopup="dialog" aria-label="Show calendar for <?= esc($weekRangeLabel) ?>"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc($weekRangeLabel) ?></button>
 </div>
 
 <div class="row row-cols-2 row-cols-lg-5 g-3 mb-4">
@@ -198,7 +198,7 @@ $priorityBadge = ['High' => 'danger', 'Medium' => 'warning', 'Low' => 'secondary
                             <a href="<?= site_url('meetings/' . $m['id']) ?>" class="text-decoration-none fw-semibold"><?= esc($m['title']) ?></a>
                             <span class="badge bg-light text-dark border"><?= esc($m['relative']) ?></span>
                         </div>
-                        <div class="muted"><?= esc($m['company_name']) ?> &middot; <?= date('d/m/Y', strtotime($m['meeting_date'])) ?><?= $m['start_time'] ? ', ' . date('g:i A', strtotime($m['start_time'])) : '' ?></div>
+                        <div class="muted"><?= esc($m['company_name']) ?> &middot; <?= erp_date($m['meeting_date']) ?><?= $m['start_time'] ? ', ' . erp_time($m['start_time']) : '' ?></div>
                     </div>
                 <?php endforeach; ?>
                 <?php if (empty($nextMeetings)): ?><p class="text-muted small mb-0">No upcoming meetings scheduled.</p><?php endif; ?>
@@ -250,12 +250,12 @@ $priorityBadge = ['High' => 'danger', 'Medium' => 'warning', 'Low' => 'secondary
         <div class="sy-card">
             <div class="sy-card-header"><strong>Monthly Expenses</strong> <a href="<?= site_url('expenses') ?>">View Report</a></div>
             <div class="sy-card-body">
-                <div class="fs-4 fw-bold text-body"><?= number_format($monthlyExpenseTotal, 2) ?></div>
+                <div class="fs-4 fw-bold text-body"><?= erp_number($monthlyExpenseTotal, 2) ?></div>
                 <div class="text-muted small mb-2">Active subscriptions, normalized to a monthly figure</div>
                 <?php foreach ($expenseByCategory as $ec): ?>
                     <div class="d-flex justify-content-between small py-1">
                         <span class="text-muted"><?= esc($ec['category']) ?></span>
-                        <span class="fw-semibold"><?= number_format((float) $ec['total'], 0) ?></span>
+                        <span class="fw-semibold"><?= erp_number((float) $ec['total'], 0) ?></span>
                     </div>
                 <?php endforeach; ?>
                 <?php if (empty($expenseByCategory)): ?><p class="text-muted small mb-0 mt-2">No active expenses yet.</p><?php endif; ?>
@@ -274,7 +274,7 @@ $priorityBadge = ['High' => 'danger', 'Medium' => 'warning', 'Low' => 'secondary
                             <a href="<?= site_url('compliance/' . $ca['id']) ?>" class="text-decoration-none fw-semibold"><?= esc($ca['title'] ?: $ca['type_name']) ?></a>
                             <span class="badge bg-<?= $priorityBadge[$ca['priority']] ?? 'secondary' ?>"><?= esc($ca['priority']) ?></span>
                         </div>
-                        <div class="muted"><?= esc($ca['company_name']) ?> &middot; due <?= date('d/m/Y', strtotime($ca['due_date'])) ?></div>
+                        <div class="muted"><?= esc($ca['company_name']) ?> &middot; due <?= erp_date($ca['due_date']) ?></div>
                     </div>
                 <?php endforeach; ?>
                 <?php if (empty($complianceAlerts)): ?><p class="text-muted small mb-0">Nothing due soon.</p><?php endif; ?>

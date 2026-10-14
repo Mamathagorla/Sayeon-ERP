@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Modules\Compliance\Models\ComplianceItemModel;
+use App\Modules\Onboarding\Models\OnboardingRecordModel;
 use App\Modules\Support\Models\SupportTicketModel;
 use App\Modules\Task\Models\TaskModel;
 
@@ -49,7 +50,16 @@ class FileController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        return $this->response->download($fullPath, null);
+        $download = $this->response->download($fullPath, null);
+        // Uploads are user-supplied: never let a browser second-guess the type and run one as a page.
+        $download->setHeader('X-Content-Type-Options', 'nosniff');
+
+        // ?inline=1 opens PDFs / images in the browser instead of forcing a download.
+        if ($this->request->getGet('inline') && in_array(strtolower(pathinfo($fullPath, PATHINFO_EXTENSION)), ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'], true)) {
+            $download->inline();
+        }
+
+        return $download;
     }
 
     /**
@@ -83,6 +93,17 @@ class FileController extends BaseController
                 $ticket = (new SupportTicketModel())->find($ownerId);
 
                 return $ticket !== null && ! $this->outOfScope(self::COMPANY_SCOPED_ROLES, (int) $ticket['company_id']);
+
+            case 'onboarding_candidates':
+                // Candidate resumes / certificates: $ownerId is the onboarding record id. Unlike the
+                // company-wide folders below, only the people who run the pipeline (HR / Super Admin)
+                // may open these, and only within their own company.
+                if (! in_array(session('roleSlug'), ['hr', 'super_admin'], true)) {
+                    return false;
+                }
+                $record = (new OnboardingRecordModel())->find($ownerId);
+
+                return $record !== null && ! $this->outOfScope(self::COMPANY_SCOPED_ROLES, (int) $record['company_id']);
 
             case 'company_documents':
             case 'bank-accounts':

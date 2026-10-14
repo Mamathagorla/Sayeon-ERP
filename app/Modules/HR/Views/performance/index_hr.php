@@ -24,7 +24,6 @@ $statusMeta = [
     .sy-perf-clear { font-size: .78rem; font-weight: 600; color: var(--sy-accent-ink); text-decoration: none; white-space: nowrap; }
 </style>
 
-<p class="text-muted mb-3">Track employee performance, reviews and goals.</p>
 
 <!-- KPI cards -->
 <div class="row row-cols-2 row-cols-lg-4 g-3 mb-3">

@@ -60,10 +60,10 @@
 
 <div class="row g-3 mb-3">
     <div class="col-md-4">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($totalBudget, 2) ?></div><div class="text-muted small">Total Budget</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($totalBudget, 2) ?></div><div class="text-muted small">Total Budget</div></div></div>
     </div>
     <div class="col-md-4">
-        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= number_format($totalRevenue, 2) ?></div><div class="text-muted small">Total Revenue</div></div></div>
+        <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold"><?= erp_number($totalRevenue, 2) ?></div><div class="text-muted small">Total Revenue</div></div></div>
     </div>
     <div class="col-md-4">
         <div class="card text-center"><div class="card-body"><div class="fs-4 fw-bold <?= $overallRoi !== null && $overallRoi >= 0 ? 'text-success' : 'text-danger' ?>"><?= $overallRoi !== null ? $overallRoi . '%' : '—' ?></div><div class="text-muted small">Overall ROI</div></div></div>
@@ -83,10 +83,10 @@
                     <td><a href="<?= site_url('campaigns/' . $c['id']) ?>"><?= esc($c['name']) ?></a></td>
                     <td><?= esc($c['company_name']) ?></td>
                     <td><?= esc(\App\Modules\Marketing\Models\CampaignModel::CHANNEL_LABELS[$c['channel']]) ?></td>
-                    <td class="text-end"><?= number_format($c['budget'], 2) ?></td>
+                    <td class="text-end"><?= erp_number($c['budget'], 2) ?></td>
                     <td class="text-end"><?= $c['leads'] ?></td>
                     <td class="text-end"><?= $c['conversions'] ?></td>
-                    <td class="text-end"><?= number_format($c['revenue'], 2) ?></td>
+                    <td class="text-end"><?= erp_number($c['revenue'], 2) ?></td>
                     <td><span class="badge bg-<?= ['draft' => 'secondary', 'active' => 'success', 'paused' => 'warning', 'completed' => 'dark'][$c['status']] ?>"><?= esc(ucfirst($c['status'])) ?></span></td>
                 </tr>
             <?php endforeach; ?>

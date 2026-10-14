@@ -55,7 +55,7 @@
                     <td><span class="badge bg-secondary"><?= esc(ucfirst($d['category'])) ?></span></td>
                     <td><?= esc($d['document_type'] ?? '—') ?></td>
                     <td><?= esc($d['employee_name'] ?? '—') ?></td>
-                    <td><?= $d['expiry_date'] ? esc(date('d/m/Y', strtotime($d['expiry_date']))) : '—' ?></td>
+                    <td><?= $d['expiry_date'] ? esc(erp_date($d['expiry_date'])) : '—' ?></td>
                     <td><?= esc($d['uploaded_by_name'] ?? '—') ?></td>
                     <td class="text-end">
                         <?php if (can('document.edit')): ?>

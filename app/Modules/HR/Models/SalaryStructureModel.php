@@ -42,7 +42,7 @@ class SalaryStructureModel extends Model
      */
     public function payableUsers(?int $companyScope = null): array
     {
-        $builder = $this->select('salary_structures.*, users.name as user_name')
+        $builder = $this->select('salary_structures.*, users.name as user_name, employee_profiles.company_id as company_id')
             ->join('users', 'users.id = salary_structures.user_id')
             ->join('employee_profiles', 'employee_profiles.user_id = salary_structures.user_id')
             ->where('employee_profiles.status', 'active');

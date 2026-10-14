@@ -57,9 +57,9 @@
                     <td><?= esc($o['vendor_name']) ?></td>
                     <td class="text-muted small"><?= esc(mb_strimwidth((string) ($o['items_preview'] ?? ''), 0, 40, '…')) ?: '—' ?></td>
                     <td class="text-muted small"><?= esc($o['requester_name'] ?? '—') ?></td>
-                    <td class="text-muted small"><?= esc(date('d/m/Y', strtotime($o['order_date']))) ?></td>
-                    <td class="text-muted small"><?= $o['expected_date'] ? esc(date('d/m/Y', strtotime($o['expected_date']))) : '—' ?></td>
-                    <td class="text-end"><?= number_format((float) $o['amount'], 2) ?></td>
+                    <td class="text-muted small"><?= esc(erp_date($o['order_date'])) ?></td>
+                    <td class="text-muted small"><?= $o['expected_date'] ? esc(erp_date($o['expected_date'])) : '—' ?></td>
+                    <td class="text-end"><?= erp_number((float) $o['amount'], 2) ?></td>
                     <td><span class="badge bg-<?= ['pending' => 'warning text-dark', 'approved' => 'success', 'rejected' => 'danger'][$o['approval_status']] ?>"><?= esc(ucfirst($o['approval_status'])) ?></span></td>
                 </tr>
             <?php endforeach; ?>

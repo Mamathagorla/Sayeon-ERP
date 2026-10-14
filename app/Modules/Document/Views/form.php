@@ -8,6 +8,9 @@
             <?php if (! empty($onboardingRecordId)): ?>
                 <input type="hidden" name="onboarding_record_id" value="<?= (int) $onboardingRecordId ?>">
             <?php endif; ?>
+            <?php if (! empty($returnEmployee)): ?>
+                <input type="hidden" name="return_employee" value="<?= (int) $returnEmployee ?>">
+            <?php endif; ?>
             <?php if (! empty($policyId)): ?>
                 <input type="hidden" name="policy_id" value="<?= (int) $policyId ?>">
             <?php endif; ?>
@@ -25,7 +28,7 @@
                     <label class="form-label">Category</label>
                     <select name="category" class="form-select" required>
                         <?php foreach ($categories as $cat): ?>
-                            <option value="<?= $cat ?>"><?= esc(ucfirst($cat)) ?></option>
+                            <option value="<?= $cat ?>" <?= ($defaultCategory ?? '') === $cat ? 'selected' : '' ?>><?= esc(ucfirst($cat)) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

@@ -15,17 +15,17 @@
 </head>
 <body>
     <h1>Financial Summary</h1>
-    <div class="meta">Period <?= esc(date('d/m/Y', strtotime($from))) ?> to <?= esc(date('d/m/Y', strtotime($to))) ?> · Generated <?= esc($generatedAt) ?> · Sayeon · Sanvima Solutions Group</div>
+    <div class="meta">Period <?= esc(erp_date($from)) ?> to <?= esc(erp_date($to)) ?> · Generated <?= esc($generatedAt) ?> · Sayeon · Sanvima Solutions Group</div>
     <div class="note">Simplified, informational snapshot — not a formal Profit &amp; Loss statement or Balance Sheet.</div>
 
     <table>
-        <tr><td>Revenue Collected (cash in)</td><td class="right"><?= number_format($cashIn, 2) ?></td></tr>
-        <tr><td>Bills Paid (cash out)</td><td class="right"><?= number_format($cashOut, 2) ?></td></tr>
-        <tr><td>Operating Expenses (in period)</td><td class="right"><?= number_format($periodExpenses, 2) ?></td></tr>
-        <tr class="total"><td>Net Profit / Loss</td><td class="right"><?= number_format($netProfitLoss, 2) ?></td></tr>
-        <tr class="total"><td>Net Cash Flow</td><td class="right"><?= number_format($netCashFlow, 2) ?></td></tr>
-        <tr><td>Outstanding Receivables</td><td class="right"><?= number_format($outstandingReceivables, 2) ?></td></tr>
-        <tr><td>Outstanding Payables</td><td class="right"><?= number_format($outstandingPayables, 2) ?></td></tr>
+        <tr><td>Revenue Collected (cash in)</td><td class="right"><?= erp_number($cashIn, 2) ?></td></tr>
+        <tr><td>Bills Paid (cash out)</td><td class="right"><?= erp_number($cashOut, 2) ?></td></tr>
+        <tr><td>Operating Expenses (in period)</td><td class="right"><?= erp_number($periodExpenses, 2) ?></td></tr>
+        <tr class="total"><td>Net Profit / Loss</td><td class="right"><?= erp_number($netProfitLoss, 2) ?></td></tr>
+        <tr class="total"><td>Net Cash Flow</td><td class="right"><?= erp_number($netCashFlow, 2) ?></td></tr>
+        <tr><td>Outstanding Receivables</td><td class="right"><?= erp_number($outstandingReceivables, 2) ?></td></tr>
+        <tr><td>Outstanding Payables</td><td class="right"><?= erp_number($outstandingPayables, 2) ?></td></tr>
     </table>
 </body>
 </html>

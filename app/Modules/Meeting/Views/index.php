@@ -38,8 +38,9 @@
                 <tr>
                     <td><a href="<?= site_url('meetings/' . $m['id']) ?>"><?= esc($m['title']) ?></a></td>
                     <td><?= esc($m['company_name']) ?></td>
-                    <td><?= esc(date('d/m/Y', strtotime($m['meeting_date']))) ?></td>
-                    <td><?= esc($m['start_time'] ? substr($m['start_time'], 0, 5) : '—') ?><?= $m['end_time'] ? ' - ' . substr($m['end_time'], 0, 5) : '' ?></td>
+                    <?php $when = erp_meeting_when($m['meeting_date'], $m['start_time'], $m['end_time'], $m['end_date'] ?? null, $m['timezone'] ?? null); ?>
+                    <td><?= esc($when['date']) ?></td>
+                    <td><?= esc($when['start']) ?><?= $when['end'] !== null ? ' - ' . esc($when['end']) : '' ?><?= $when['nextDay'] ? ' (next day)' : '' ?></td>
                     <td><?php if ($m['location'] && filter_var($m['location'], FILTER_VALIDATE_URL)): ?><a href="<?= esc($m['location'], 'attr') ?>" target="_blank" rel="noopener"><?= esc($m['location']) ?></a><?php elseif ($m['location']): ?><?= esc($m['location']) ?><?php else: ?>—<?php endif; ?></td>
                 </tr>
             <?php endforeach; ?>

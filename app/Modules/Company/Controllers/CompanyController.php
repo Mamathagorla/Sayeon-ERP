@@ -8,6 +8,7 @@ use App\Modules\Company\Models\CompanyDirectorModel;
 use App\Modules\Company\Models\BankAccountModel;
 use App\Modules\Company\Models\CompanyModel;
 use App\Modules\Company\Models\CountryModel;
+use App\Modules\Company\Models\StateModel;
 use App\Modules\Compliance\Models\ComplianceItemModel;
 use App\Modules\Document\Models\DocumentModel;
 use App\Modules\HR\Models\EmployeeProfileModel;
@@ -24,6 +25,7 @@ class CompanyController extends BaseController
     protected DocumentModel $documentModel;
     protected WebsiteModel $websiteModel;
     protected CountryModel $countryModel;
+    protected StateModel $stateModel;
 
     public function __construct()
     {
@@ -36,6 +38,7 @@ class CompanyController extends BaseController
         $this->documentModel  = new DocumentModel();
         $this->websiteModel   = new WebsiteModel();
         $this->countryModel   = new CountryModel();
+        $this->stateModel     = new StateModel();
     }
 
     /**
@@ -105,6 +108,7 @@ class CompanyController extends BaseController
             'company'        => null,
             'owners'         => $this->userModel->listForOptions(),
             'countries'      => $this->countryModel->optionsList(),
+            'statesByCountry' => $this->stateModel->allGroupedByCountry(),
         ]);
     }
 
@@ -112,6 +116,10 @@ class CompanyController extends BaseController
     {
         if (! $this->validate($this->companyModel->validationRulesFor(), $this->companyModel->getValidationMessages())) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        if ($stateError = $this->stateError()) {
+            return redirect()->back()->withInput()->with('error', $stateError);
         }
 
         $id = $this->companyModel->insert($this->companyPayload());
@@ -179,6 +187,7 @@ class CompanyController extends BaseController
             'company'        => $company,
             'owners'         => $this->userModel->listForOptions(),
             'countries'      => $this->countryModel->optionsList(),
+            'statesByCountry' => $this->stateModel->allGroupedByCountry(),
         ]);
     }
 
@@ -192,6 +201,10 @@ class CompanyController extends BaseController
 
         if (! $this->validate($this->companyModel->validationRulesFor($id), $this->companyModel->getValidationMessages())) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        if ($stateError = $this->stateError()) {
+            return redirect()->back()->withInput()->with('error', $stateError);
         }
 
         // skipValidation: already validated above via validationRulesFor($id)
@@ -225,6 +238,27 @@ class CompanyController extends BaseController
         return redirect()->to('/companies')->with('success', 'Company removed.');
     }
 
+    /**
+     * A State is optional (existing companies have none), but when one is
+     * chosen it must belong to the chosen Country. Otherwise a company could
+     * end up with a state that the GST rule would compare against the wrong
+     * country's states.
+     */
+    private function stateError(): ?string
+    {
+        $stateId = $this->request->getPost('state_id') ?: null;
+
+        if ($stateId === null) {
+            return null;
+        }
+
+        $state = $this->stateModel->find((int) $stateId);
+
+        return $state !== null && (int) $state['country_id'] === (int) $this->request->getPost('country_id')
+            ? null
+            : 'Choose a state from the selected country.';
+    }
+
     private function companyPayload(): array
     {
         $countryId = $this->request->getPost('country_id') ?: null;
@@ -239,11 +273,10 @@ class CompanyController extends BaseController
             // string (reports, older code) doesn't silently go stale.
             'country'             => $countryId ? ($this->countryModel->find($countryId)['name'] ?? '') : '',
             'country_id'          => $countryId,
-            // state_id is deliberately NOT set here — the State field was
-            // removed from the Company form (kept in the schema/existing
-            // data), so this payload must never touch that column: doing
-            // so would silently null out an already-saved state on every
-            // future edit even though nothing on the form ever changed it.
+            // The State is what decides intra-state (CGST+SGST) vs
+            // inter-state (IGST) GST on invoices, so the form sets it. A blank
+            // State stores NULL, the same as before this field was back.
+            'state_id'            => $this->request->getPost('state_id') ?: null,
             'cin'                 => $this->request->getPost('cin'),
             'gst'                 => $this->request->getPost('gst'),
             'pan'                 => $this->request->getPost('pan'),

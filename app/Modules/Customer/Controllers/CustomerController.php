@@ -74,6 +74,10 @@ class CustomerController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only add customers for your own company.');
         }
 
+        if ($stateError = $this->stateError()) {
+            return redirect()->back()->withInput()->with('error', $stateError);
+        }
+
         if ($gstinError = $this->gstinPrefixError()) {
             return redirect()->back()->withInput()->with('error', $gstinError);
         }
@@ -112,6 +116,10 @@ class CustomerController extends BaseController
 
         if (! $this->validate($rules, $this->customerModel->getValidationMessages())) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        if ($stateError = $this->stateError()) {
+            return redirect()->back()->withInput()->with('error', $stateError);
         }
 
         if ($gstinError = $this->gstinPrefixError()) {
@@ -186,6 +194,26 @@ class CustomerController extends BaseController
         }
 
         return null;
+    }
+
+    /**
+     * A customer's state must belong to the customer's country, the same rule
+     * as CompanyController::stateError(). A blank state is allowed. The GSTIN
+     * prefix check (gstinPrefixError()) still runs after this.
+     */
+    private function stateError(): ?string
+    {
+        $stateId = $this->request->getPost('state_id') ?: null;
+
+        if ($stateId === null) {
+            return null;
+        }
+
+        $state = $this->stateModel->find((int) $stateId);
+
+        return $state !== null && (int) $state['country_id'] === (int) $this->request->getPost('country_id')
+            ? null
+            : 'Choose a state from the selected country.';
     }
 
     private function formData(?array $customer): array

@@ -172,8 +172,32 @@ class LeaveController extends BaseController
             return redirect()->back()->withInput()->with('error', 'End date cannot be before the start date.');
         }
 
+        $leaveType = $this->leaveTypeModel->find((int) $this->request->getPost('leave_type_id'));
+        if ($leaveType === null) {
+            return redirect()->back()->withInput()->with('error', 'Select a valid leave type.');
+        }
+
         $userId = (int) $this->currentUserId();
+
+        // The same days cannot be requested twice (double click, or a second request for overlapping dates) while an
+        // earlier pending/approved request still covers them.
+        $overlap = $this->leaveModel->where('user_id', $userId)->whereIn('status', ['pending', 'approved'])
+            ->where('start_date <=', $endDate)->where('end_date >=', $startDate)->countAllResults();
+        if ($overlap > 0) {
+            return redirect()->back()->withInput()->with('error', 'You already have a pending or approved leave request that overlaps these dates.');
+        }
+
         $days   = $this->leaveModel->calculateDays($startDate, $endDate);
+
+        // Paid leave types have an annual quota: pending + approved + this request must fit inside it. Unpaid leave is
+        // not capped (Payroll deducts it as Loss of Pay instead).
+        if ((int) $leaveType['is_paid'] === 1 && (float) $leaveType['annual_quota'] > 0) {
+            $committed = $this->leaveModel->committedDays($userId, (int) $leaveType['id'], (int) date('Y', strtotime($startDate)));
+            $remaining = max(0.0, (float) $leaveType['annual_quota'] - $committed);
+            if ($days > $remaining) {
+                return redirect()->back()->withInput()->with('error', 'You requested ' . $days . ' day(s) of ' . $leaveType['name'] . ' but only ' . $remaining . ' day(s) remain in your annual quota. Apply for Unpaid Leave for the rest.');
+            }
+        }
 
         $id = $this->leaveModel->insert([
             'user_id'       => $userId,
@@ -274,6 +298,10 @@ class LeaveController extends BaseController
 
         $this->logActivity('leave', 'update', $id, ucfirst($status) . ' leave request #' . $id);
 
+        if ($status === 'approved') {
+            $this->markLeaveOnAttendance($request);
+        }
+
         $this->notificationService->notify(
             (int) $request['user_id'],
             'leave_' . $status,
@@ -284,6 +312,29 @@ class LeaveController extends BaseController
         );
 
         return redirect()->to('/hr/leave')->with('success', 'Leave request ' . $status . '.');
+    }
+
+    /**
+     * Approved leave shows on the attendance record: every day of the request becomes "on_leave" (a day HR had marked
+     * "absent" is corrected to on_leave; present / half-day / holiday / week-off rows are left as they are). Payroll's
+     * Loss-of-Pay still counts unpaid leave from the request itself, so nothing is counted twice.
+     */
+    private function markLeaveOnAttendance(array $request): void
+    {
+        $attendance = new \App\Modules\HR\Models\AttendanceModel();
+        $day        = new \DateTimeImmutable($request['start_date']);
+        $end        = new \DateTimeImmutable($request['end_date']);
+
+        for ($i = 0; $day <= $end && $i < 366; $i++, $day = $day->modify('+1 day')) {
+            $date     = $day->format('Y-m-d');
+            $existing = $attendance->where('user_id', (int) $request['user_id'])->where('date', $date)->first();
+
+            if ($existing === null) {
+                $attendance->insert(['user_id' => (int) $request['user_id'], 'date' => $date, 'status' => 'on_leave', 'notes' => 'Approved leave #' . $request['id']]);
+            } elseif ($existing['status'] === 'absent') {
+                $attendance->update($existing['id'], ['status' => 'on_leave', 'notes' => 'Approved leave #' . $request['id']]);
+            }
+        }
     }
 
     /**

@@ -1,9 +1,5 @@
 <?= $this->extend('layouts/main') ?>
 
-<?= $this->section('pageActions') ?>
-<a href="<?= site_url('companies/' . $companyId) ?>" class="btn btn-light btn-sm">Back to company</a>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 <div class="card" style="max-width: 720px;">
     <div class="card-body">

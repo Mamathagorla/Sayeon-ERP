@@ -59,6 +59,10 @@ class DocumentController extends BaseController
             // dropdown, no new field/column needed (offboarding is
             // always for an existing employee_user_id already).
             'defaultEmployeeUserId' => $this->request->getGet('employee_user_id'),
+            // Set when arriving from an Employee profile's Documents tab -
+            // persisted as a hidden field so Save returns to that profile.
+            'returnEmployee'  => $this->request->getGet('return_employee'),
+            'defaultCategory' => $this->request->getGet('category'),
             // Set when arriving from a Policy/Manual's "Attach
             // Document" link — same passthrough pattern as
             // onboarding_record_id above.
@@ -113,6 +117,9 @@ class DocumentController extends BaseController
 
         $this->logActivity('document', 'create', $id, 'Uploaded document: ' . $this->request->getPost('title'));
 
+        if ($back = $this->employeeProfileUrl()) {
+            return redirect()->to($back)->with('success', 'Document uploaded.');
+        }
         if ($onboardingRecordId) {
             return redirect()->to('/hr/onboarding/' . $onboardingRecordId)->with('success', 'Document uploaded.');
         }
@@ -208,6 +215,25 @@ class DocumentController extends BaseController
             $this->logActivity('document', 'delete', $id, 'Deleted document: ' . $document['title']);
         }
 
-        return redirect()->to('/documents')->with('success', 'Document deleted.');
+        return redirect()->to($this->employeeProfileUrl() ?? '/documents')->with('success', 'Document deleted.');
+    }
+
+    /**
+     * Where to return after an upload/delete started from an Employee profile's Documents tab.
+     * Only ever a profile id (never a URL from the request), and only one the viewer may open.
+     */
+    private function employeeProfileUrl(): ?string
+    {
+        $pid = (int) ($this->request->getPost('return_employee') ?? 0);
+        if ($pid <= 0) {
+            return null;
+        }
+
+        $profile = (new \App\Modules\HR\Models\EmployeeProfileModel())->find($pid);
+        if ($profile === null || $this->outOfScope(self::COMPANY_SCOPED_ROLES, $profile['company_id'])) {
+            return null;
+        }
+
+        return '/hr/employees/' . $pid . '#pf-documents';
     }
 }

@@ -5,6 +5,7 @@ namespace App\Modules\Accounting\Controllers;
 use App\Controllers\BaseController;
 use App\Modules\Accounting\Models\BillModel;
 use App\Modules\Accounting\Models\InvoiceModel;
+use App\Modules\Accounting\Models\PaymentModel;
 
 class AccountingController extends BaseController
 {
@@ -41,11 +42,15 @@ class AccountingController extends BaseController
             return $companyScope !== null ? $query->where('company_id', $companyScope) : $query;
         };
 
+        $payments = new PaymentModel();
+        $openInvoices = $scoped($this->invoiceModel)->select('id, amount')->whereIn('status', InvoiceModel::OPEN_STATUSES)->findAll();
+        $openBills    = $scoped($this->billModel)->select('id, amount')->whereIn('status', BillModel::OPEN_STATUSES)->findAll();
+
         return view('App\Modules\Accounting\index', [
             'title'     => 'Accounting',
             'navActive' => 'accounting',
-            'outstandingReceivables' => $scoped($this->invoiceModel)->whereIn('status', InvoiceModel::OPEN_STATUSES)->selectSum('amount')->first()['amount'] ?? 0,
-            'outstandingPayables'    => $scoped($this->billModel)->whereIn('status', BillModel::OPEN_STATUSES)->selectSum('amount')->first()['amount'] ?? 0,
+            'outstandingReceivables' => $payments->outstanding($openInvoices, 'invoice_id'),
+            'outstandingPayables'    => $payments->outstanding($openBills, 'bill_id'),
             'overdueInvoiceCount'    => $scoped($this->invoiceModel)->where('status', 'overdue')->countAllResults(),
             'overdueBillCount'       => $scoped($this->billModel)->where('status', 'overdue')->countAllResults(),
         ]);

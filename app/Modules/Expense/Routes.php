@@ -26,3 +26,13 @@ $routes->group('recurring-expenses', ['namespace' => 'App\Modules\Expense\Contro
     $routes->post('(:num)/resume', 'RecurringExpenseController::resume/$1', ['filter' => 'permission:expense.edit']);
     $routes->post('(:num)/cancel', 'RecurringExpenseController::cancel/$1', ['filter' => 'permission:expense.delete']);
 });
+
+$routes->group('expense-claims', ['namespace' => 'App\Modules\Expense\Controllers'], static function ($routes) {
+    $routes->get('/', 'ExpenseClaimController::index', ['filter' => 'permission:expense_claim.view']);
+    $routes->get('create', 'ExpenseClaimController::create', ['filter' => 'permission:expense_claim.create']);
+    $routes->post('/', 'ExpenseClaimController::store', ['filter' => 'permission:expense_claim.create']);
+    $routes->post('(:num)/cancel', 'ExpenseClaimController::cancel/$1', ['filter' => 'permission:expense_claim.create']);
+    $routes->post('(:num)/approve', 'ExpenseClaimController::approve/$1', ['filter' => 'permission:expense_claim.approve']);
+    $routes->post('(:num)/reject', 'ExpenseClaimController::reject/$1', ['filter' => 'permission:expense_claim.approve']);
+    $routes->post('(:num)/reimburse', 'ExpenseClaimController::reimburse/$1', ['filter' => 'permission:expense_claim.reimburse']);
+});

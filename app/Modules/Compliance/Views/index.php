@@ -74,7 +74,7 @@
                     <td><?= esc($i['regulator'] ?? '—') ?></td>
                     <td><?= esc($i['company_name']) ?></td>
                     <td><?= esc($i['period'] ?? '—') ?></td>
-                    <td><?= esc(date('d/m/Y', strtotime($i['due_date']))) ?></td>
+                    <td><?= esc(erp_date($i['due_date'])) ?></td>
                     <td><?= esc(ucwords(str_replace('_', ' ', $i['recurrence']))) ?></td>
                     <td><?= esc($i['responsible_name'] ?? '—') ?></td>
                     <td><span class="badge bg-<?= ['pending' => 'secondary', 'in_progress' => 'info', 'filed' => 'success', 'overdue' => 'danger'][$i['status']] ?>"><?= esc(ucwords(str_replace('_', ' ', $i['status']))) ?></span></td>

@@ -9,7 +9,7 @@
     <div class="col-md-5">
         <div class="card">
             <div class="card-body text-center">
-                <h6 class="text-muted">Today — <?= esc(date('d/m/Y')) ?></h6>
+                <h6 class="text-muted">Today — <?= esc(erp_date(date('Y-m-d'))) ?></h6>
                 <?php if (! $today || ! $today['check_in']): ?>
                     <p class="text-muted small">You haven't checked in yet.</p>
                     <form action="<?= site_url('hr/attendance/check-in') ?>" method="post">
@@ -17,14 +17,14 @@
                         <button type="submit" class="btn btn-success"><i class="fas fa-right-to-bracket me-1"></i>Check In</button>
                     </form>
                 <?php elseif (! $today['check_out']): ?>
-                    <p class="small">Checked in at <strong><?= esc(date('g:i A', strtotime($today['check_in']))) ?></strong></p>
+                    <p class="small">Checked in at <strong><?= esc(erp_time($today['check_in'])) ?></strong></p>
                     <form action="<?= site_url('hr/attendance/check-out') ?>" method="post">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn btn-danger"><i class="fas fa-right-from-bracket me-1"></i>Check Out</button>
                     </form>
                 <?php else: ?>
-                    <p class="small mb-0">Checked in at <strong><?= esc(date('g:i A', strtotime($today['check_in']))) ?></strong></p>
-                    <p class="small">Checked out at <strong><?= esc(date('g:i A', strtotime($today['check_out']))) ?></strong></p>
+                    <p class="small mb-0">Checked in at <strong><?= esc(erp_time($today['check_in'])) ?></strong></p>
+                    <p class="small">Checked out at <strong><?= esc(erp_time($today['check_out'])) ?></strong></p>
                     <span class="badge bg-success">Day complete</span>
                 <?php endif; ?>
             </div>
@@ -55,9 +55,9 @@
             <tbody>
             <?php foreach ($recent as $r): ?>
                 <tr>
-                    <td><?= esc(date('d/m/Y', strtotime($r['date']))) ?></td>
-                    <td><?= $r['check_in'] ? esc(date('g:i A', strtotime($r['check_in']))) : '—' ?></td>
-                    <td><?= $r['check_out'] ? esc(date('g:i A', strtotime($r['check_out']))) : '—' ?></td>
+                    <td><?= esc(erp_date($r['date'])) ?></td>
+                    <td><?= $r['check_in'] ? esc(erp_time($r['check_in'])) : '—' ?></td>
+                    <td><?= $r['check_out'] ? esc(erp_time($r['check_out'])) : '—' ?></td>
                     <td><span class="badge bg-secondary"><?= esc(ucwords(str_replace('_', ' ', $r['status']))) ?></span></td>
                 </tr>
             <?php endforeach; ?>

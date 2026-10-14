@@ -50,9 +50,9 @@
                     <td><a href="<?= site_url('purchase-orders/' . $o['id']) ?>" class="fw-semibold text-decoration-none"><?= esc($o['po_number']) ?></a></td>
                     <td><?= esc($o['vendor_name']) ?></td>
                     <td class="text-muted small"><?= esc(mb_strimwidth((string) ($o['items_preview'] ?? ''), 0, 40, '…')) ?: '—' ?></td>
-                    <td class="text-muted small"><?= esc(date('d/m/Y', strtotime($o['order_date']))) ?></td>
+                    <td class="text-muted small"><?= esc(erp_date($o['order_date'])) ?></td>
                     <td class="text-muted small text-end"><?= esc($o['items_count']) ?></td>
-                    <td class="text-end"><?= number_format((float) $o['amount'], 2) ?></td>
+                    <td class="text-end"><?= erp_number((float) $o['amount'], 2) ?></td>
                     <td><span class="badge bg-<?= ['pending' => 'warning text-dark', 'partial' => 'info text-dark', 'paid' => 'success'][$o['payment_status']] ?>"><?= esc(ucfirst($o['payment_status'])) ?></span></td>
                     <td><span class="badge bg-<?= ['ordered' => 'secondary', 'in_transit' => 'info text-dark', 'received' => 'success'][$o['fulfillment_status'] ?? 'ordered'] ?>"><?= esc(ucwords(str_replace('_', ' ', $o['fulfillment_status'] ?? 'ordered'))) ?></span></td>
                 </tr>

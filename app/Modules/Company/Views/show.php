@@ -4,7 +4,6 @@
 <?php if (can('company.edit')): ?>
 <a href="<?= site_url('companies/' . $company['id'] . '/edit') ?>" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
 <?php endif; ?>
-<a href="<?= site_url('companies') ?>" class="btn btn-light btn-sm">Back to list</a>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -96,9 +95,9 @@
             </div>
             <div class="co-meta-col">
                 <div class="co-meta-row"><span class="k">PAN</span><span class="v <?= $company['pan'] ? '' : 'muted' ?>"><?= esc($company['pan'] ?? '—') ?></span></div>
-                <div class="co-meta-row"><span class="k">Incorporation Date</span><span class="v <?= $company['incorporation_date'] ? '' : 'muted' ?>"><?= $company['incorporation_date'] ? esc(date('d/m/Y', strtotime($company['incorporation_date']))) : '—' ?></span></div>
+                <div class="co-meta-row"><span class="k">Incorporation Date</span><span class="v <?= $company['incorporation_date'] ? '' : 'muted' ?>"><?= $company['incorporation_date'] ? esc(erp_date($company['incorporation_date'])) : '—' ?></span></div>
                 <div class="co-meta-row"><span class="k">Registered Address</span><span class="v <?= $company['registered_address'] ? '' : 'muted' ?>"><?= nl2br(esc($company['registered_address'] ?? '—')) ?></span></div>
-                <div class="co-meta-row"><span class="k">Added On</span><span class="v"><?= $company['created_at'] ? esc(date('d/m/Y, g:i A', strtotime($company['created_at']))) : '—' ?></span></div>
+                <div class="co-meta-row"><span class="k">Added On</span><span class="v"><?= $company['created_at'] ? esc(erp_date($company['created_at']) . ", " . erp_time($company['created_at'])) : '—' ?></span></div>
             </div>
         </div>
     </div>
@@ -121,7 +120,7 @@
                     <td><?= esc($d['din'] ?? '—') ?></td>
                     <td><?= esc($d['designation'] ?? '—') ?></td>
                     <td><?= esc($d['email'] ?? '—') ?></td>
-                    <td><?= $d['appointed_date'] ? esc(date('d/m/Y', strtotime($d['appointed_date']))) : '—' ?></td>
+                    <td><?= $d['appointed_date'] ? esc(erp_date($d['appointed_date'])) : '—' ?></td>
                     <td class="text-end">
                         <?php if (can('company.edit')): ?>
                         <a href="<?= site_url('companies/' . $company['id'] . '/directors/' . $d['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>
@@ -281,7 +280,7 @@
                     <td><a href="<?= site_url('files/download?path=' . urlencode($d['file_path'])) ?>"><?= esc($d['title']) ?></a></td>
                     <td><span class="badge bg-secondary"><?= esc(ucfirst($d['category'])) ?></span></td>
                     <td><?= esc($d['document_type'] ?? '—') ?></td>
-                    <td><?= $d['expiry_date'] ? esc(date('d/m/Y', strtotime($d['expiry_date']))) : '—' ?></td>
+                    <td><?= $d['expiry_date'] ? esc(erp_date($d['expiry_date'])) : '—' ?></td>
                     <td class="text-end">
                         <?php if (can('document.edit')): ?>
                         <a href="<?= site_url('documents/' . $d['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>
@@ -309,7 +308,7 @@
             <?php foreach ($compliance as $i): ?>
                 <tr class="<?= $i['status'] === 'overdue' ? 'table-danger' : '' ?>">
                     <td><a href="<?= site_url('compliance/' . $i['id']) ?>"><?= esc($i['title'] ?: $i['type_name']) ?></a></td>
-                    <td><?= esc(date('d/m/Y', strtotime($i['due_date']))) ?></td>
+                    <td><?= esc(erp_date($i['due_date'])) ?></td>
                     <td><?= esc(ucwords(str_replace('_', ' ', $i['recurrence']))) ?></td>
                     <td><?= esc($i['responsible_name'] ?? '—') ?></td>
                     <td><span class="badge bg-<?= ['pending' => 'secondary', 'in_progress' => 'info', 'filed' => 'success', 'overdue' => 'danger'][$i['status']] ?>"><?= esc(ucwords(str_replace('_', ' ', $i['status']))) ?></span></td>
@@ -362,8 +361,8 @@
                 <tr>
                     <td><a href="<?= site_url('websites/' . $w['id']) ?>"><?= esc($w['domain']) ?></a></td>
                     <td><?= esc($w['hosting_provider'] ?? '—') ?></td>
-                    <td><?= $w['ssl_expiry'] ? esc(date('d/m/Y', strtotime($w['ssl_expiry']))) : '—' ?></td>
-                    <td><?= $w['renewal_date'] ? esc(date('d/m/Y', strtotime($w['renewal_date']))) : '—' ?></td>
+                    <td><?= $w['ssl_expiry'] ? esc(erp_date($w['ssl_expiry'])) : '—' ?></td>
+                    <td><?= $w['renewal_date'] ? esc(erp_date($w['renewal_date'])) : '—' ?></td>
                     <td><span class="badge bg-<?= ['active' => 'success', 'inactive' => 'secondary', 'expired' => 'danger'][$w['status']] ?>"><?= esc(ucfirst($w['status'])) ?></span></td>
                 </tr>
             <?php endforeach; ?>

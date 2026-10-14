@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-8">
     <div class="card-body">
-        <form action="<?= $template ? site_url('recurring-expenses/' . $template['id']) : site_url('recurring-expenses') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Expense Details" action="<?= $template ? site_url('recurring-expenses/' . $template['id']) : site_url('recurring-expenses') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -46,14 +46,15 @@
                 <div class="col-12 mb-3">
                     <div class="alert alert-light border small mb-0">
                         <strong>Schedule</strong> (fixed after creation) —
-                        <?= esc(ucfirst($template['frequency'])) ?>, starting <?= esc(date('d/m/Y', strtotime($template['start_date']))) ?>,
+                        <?= esc(ucfirst($template['frequency'])) ?>, starting <?= esc(erp_date($template['start_date'])) ?>,
                         <?= $template['end_type'] === 'occurrences'
                             ? 'for ' . (int) $template['occurrences_total'] . ' occurrences'
-                            : 'until ' . esc(date('d/m/Y', strtotime($template['end_date']))) ?>.
+                            : 'until ' . esc(erp_date($template['end_date'])) ?>.
                         <?= (int) $template['occurrences_generated'] ?> generated so far.
                     </div>
                 </div>
                 <?php else: ?>
+                <div class="col-12 erp-section-marker" data-section-title="Recurrence"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Frequency</label>
                     <select name="frequency" class="form-select" required>

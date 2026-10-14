@@ -66,8 +66,8 @@
                     <td><a href="<?= site_url('accounting/invoices/' . $i['id']) ?>"><?= esc($i['invoice_number']) ?></a></td>
                     <td><?= esc($i['company_name']) ?></td>
                     <td><?= esc($i['customer_name']) ?></td>
-                    <td class="text-end"><?= number_format($i['amount'], 2) ?></td>
-                    <td><?= esc(date('d/m/Y', strtotime($i['issue_date']))) ?></td>
+                    <td class="text-end"><?= erp_number($i['amount'], 2) ?></td>
+                    <td><?= esc(erp_date($i['issue_date'])) ?></td>
                     <td><?= esc($i['due_date'] ?? '—') ?></td>
                     <td><span class="badge bg-<?= ['draft' => 'secondary', 'sent' => 'info', 'partially_paid' => 'warning', 'paid' => 'success', 'overdue' => 'danger', 'cancelled' => 'dark'][$i['status']] ?>"><?= esc(ucwords(str_replace('_', ' ', $i['status']))) ?></span></td>
                 </tr>

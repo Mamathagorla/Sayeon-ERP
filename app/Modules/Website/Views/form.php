@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-9">
     <div class="card-body">
-        <form action="<?= $website ? site_url('websites/' . $website['id']) : site_url('websites') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Domain &amp; Hosting" action="<?= $website ? site_url('websites/' . $website['id']) : site_url('websites') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -52,7 +52,7 @@
                     <input type="text" name="dns_details" class="form-control" value="<?= esc($website['dns_details'] ?? '') ?>" placeholder="Nameservers, key DNS records, …">
                 </div>
 
-                <div class="col-12"><hr><h6>Control Panel &amp; Repository</h6></div>
+                <div class="col-12 erp-section-marker" data-section-title="Control Panel &amp; Repository"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Control Panel</label>
                     <input type="text" name="control_panel" class="form-control" value="<?= esc($website['control_panel'] ?? '') ?>" placeholder="cPanel, Plesk, …">
@@ -66,7 +66,7 @@
                     <input type="text" name="git_repository" class="form-control" value="<?= esc($website['git_repository'] ?? '') ?>">
                 </div>
 
-                <div class="col-12"><hr><h6>Credentials <span class="text-muted small fw-normal">(passwords are encrypted at rest)</span></h6></div>
+                <div class="col-12 erp-section-marker" data-section-title="Credentials" data-section-note="passwords are encrypted at rest"></div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Admin Login Username</label>
                     <input type="text" name="admin_login_username" class="form-control" value="<?= esc($website['admin_login_username'] ?? '') ?>">

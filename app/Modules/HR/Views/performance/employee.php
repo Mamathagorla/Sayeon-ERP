@@ -6,7 +6,6 @@ $bullets     = static fn (?string $text): array => array_values(array_filter(arr
 ?>
 
 <?= $this->section('pageActions') ?>
-<a href="<?= site_url('hr/performance') ?>" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Performance</a>
 <?php if (can('performance.create')): ?>
 <a href="<?= site_url('hr/performance/create?user_id=' . $employee['user_id']) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>Start Review</a>
 <?php endif; ?>
@@ -27,8 +26,6 @@ $bullets     = static fn (?string $text): array => array_values(array_filter(arr
     .sy-perf-bullets { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
     .sy-perf-bullets li { margin-bottom: 3px; }
 </style>
-
-<div class="sy-pf-crumb"><a href="<?= site_url('hr/performance') ?>"><i class="fas fa-arrow-left me-1"></i>Back to Performance</a></div>
 
 <!-- Employee header -->
 <div class="sy-card sy-pf-head mb-3" style="height:auto">

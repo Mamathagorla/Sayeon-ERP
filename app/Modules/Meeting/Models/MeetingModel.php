@@ -7,6 +7,7 @@ use CodeIgniter\Model;
 class MeetingModel extends Model
 {
     public const PROVIDERS = ['none', 'google_meet', 'zoom'];
+    public const SYNC_STATUSES = ['not_synced', 'synced', 'sync_failed', 'cancelled'];
 
     protected $table            = 'meetings';
     protected $primaryKey       = 'id';
@@ -16,7 +17,8 @@ class MeetingModel extends Model
     protected $allowedFields = [
         'company_id', 'title', 'agenda', 'meeting_date', 'start_time',
         'end_time', 'location', 'meeting_link', 'join_token', 'recurring_meeting_id',
-        'occurrence_number', 'mom', 'created_by', 'provider', 'provider_meeting_id',
+        'occurrence_number', 'mom', 'created_by', 'provider', 'provider_meeting_id', 'end_date', 'timezone',
+        'sync_status', 'sync_error',
     ];
 
     protected $useTimestamps = true;
@@ -47,6 +49,30 @@ class MeetingModel extends Model
         }
 
         return $data;
+    }
+
+    /**
+     * A meeting this organizer created in the last few minutes with the same
+     * company, title, provider and schedule: what a retried or double-submitted
+     * form would otherwise duplicate (and, with a provider, create a second
+     * external event for).
+     *
+     * @param array{meeting_date: string, start_time: ?string, end_time: ?string} $when
+     */
+    public function recentDuplicate(int $createdBy, int $companyId, string $title, array $when, string $provider, int $withinMinutes = 10): ?array
+    {
+        $builder = $this->where('created_by', $createdBy)
+            ->where('company_id', $companyId)
+            ->where('title', $title)
+            ->where('provider', $provider)
+            ->where('meeting_date', $when['meeting_date'])
+            ->where('created_at >=', date('Y-m-d H:i:s', time() - $withinMinutes * 60));
+
+        foreach (['start_time', 'end_time'] as $column) {
+            $when[$column] === null ? $builder->where($column . ' IS NULL', null, false) : $builder->where($column, $when[$column]);
+        }
+
+        return $builder->orderBy('id', 'DESC')->first();
     }
 
     /**

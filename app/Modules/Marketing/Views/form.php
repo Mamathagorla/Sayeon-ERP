@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="card col-lg-8">
     <div class="card-body">
-        <form action="<?= $campaign ? site_url('campaigns/' . $campaign['id']) : site_url('campaigns') ?>" method="post">
+        <form data-erp-sections data-erp-first-section="Campaign Details" action="<?= $campaign ? site_url('campaigns/' . $campaign['id']) : site_url('campaigns') ?>" method="post">
             <?= csrf_field() ?>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -49,7 +49,7 @@
                     <input type="date" name="end_date" class="form-control" value="<?= esc($campaign['end_date'] ?? '') ?>">
                 </div>
 
-                <div class="col-12"><hr><h6>Performance <span class="text-muted small fw-normal">(update these as the campaign runs)</span></h6></div>
+                <div class="col-12 erp-section-marker" data-section-title="Performance" data-section-note="update these as the campaign runs"></div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Leads</label>
                     <input type="number" min="0" name="leads" class="form-control" value="<?= esc($campaign['leads'] ?? '0') ?>">

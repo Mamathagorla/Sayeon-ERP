@@ -18,9 +18,9 @@
     <div class="meta">Generated <?= esc($generatedAt) ?> · Sayeon · Sanvima Solutions Group</div>
 
     <div class="summary">
-        <div><strong>Total recorded:</strong> <?= number_format($total, 2) ?></div>
-        <div><strong>Monthly-Equivalent (active):</strong> <?= number_format($monthlyTotal, 2) ?></div>
-        <div><strong><?= $periodType === 'year' ? 'Yearly Total' : 'Annualized' ?>:</strong> <?= number_format($yearlyTotal, 2) ?></div>
+        <div><strong>Total recorded:</strong> <?= erp_number($total, 2) ?></div>
+        <div><strong>Monthly-Equivalent (active):</strong> <?= erp_number($monthlyTotal, 2) ?></div>
+        <div><strong><?= $periodType === 'year' ? 'Yearly Total' : 'Annualized' ?>:</strong> <?= erp_number($yearlyTotal, 2) ?></div>
     </div>
 
     <table>
@@ -32,8 +32,8 @@
                 <td><?= esc($e['company_name']) ?></td>
                 <td><?= esc($e['category']) ?></td>
                 <td><?= esc(ucfirst($e['billing_cycle'])) ?></td>
-                <td><?= number_format($e['amount'], 2) ?></td>
-                <td><?= $e['renewal_date'] ? esc(date('d/m/Y', strtotime($e['renewal_date']))) : '-' ?></td>
+                <td><?= erp_number($e['amount'], 2) ?></td>
+                <td><?= $e['renewal_date'] ? esc(erp_date($e['renewal_date'])) : '-' ?></td>
                 <td><?= esc(ucfirst($e['status'])) ?></td>
             </tr>
         <?php endforeach; ?>

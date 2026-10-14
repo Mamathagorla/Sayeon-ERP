@@ -148,10 +148,18 @@ abstract class BaseController extends Controller
      * a Manager or HR viewer (whose scope comes from their own
      * employee_profiles row, not the topbar) would otherwise fall
      * through to seeing every company's staff in this dropdown.
+     *
+     * $forCompanyId overrides the viewer's own scope with a specific
+     * company — for a page about one already-known record (e.g. "add a
+     * participant to this meeting"), where the list must match that
+     * record's company, not whichever company the viewer happens to be
+     * scoped/switched to right now (a Super Admin browsing "All
+     * Companies", or a different company, would otherwise see every
+     * company's staff as pickable options here).
      */
-    protected function scopedUserOptions(array $allUsers): array
+    protected function scopedUserOptions(array $allUsers, ?int $forCompanyId = null): array
     {
-        $scope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
+        $scope = $forCompanyId ?? $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
 
         if ($scope === null) {
             return $allUsers;
@@ -175,6 +183,34 @@ abstract class BaseController extends Controller
         $scope = $this->companyScopeFor($scopedRoles);
 
         return $scope !== null && $scope !== (int) $recordCompanyId;
+    }
+
+    /**
+     * Company-template hook for existing document actions (offer letter,
+     * payslip, invoice, ...). Call it AFTER the action's own access/scope
+     * checks. Returns a response when the record's company has an active
+     * template for $type (the finished document) or when that template
+     * can't be used (a redirect with the reason). When the company has no
+     * active template: HR documents (letters, certificates, payslips) are
+     * blocked with a clear message; Accounting documents return null so the
+     * action keeps its built-in output. Never consults another company's template.
+     */
+    protected function templatedDocument(string $type, int $recordId, bool $inline = false): ?ResponseInterface
+    {
+        $svc = new \App\Modules\Document\Services\TemplatedDocument();
+        $doc = $svc->forRecord($type, $recordId, $this->currentUserId());
+
+        if ($doc['status'] === $svc::NONE) {
+            // Official HR documents never fall back to a built-in/generic format.
+            return empty($doc['strict']) ? null : redirect()->back()->with('error', $doc['message']);
+        }
+        if ($doc['status'] !== $svc::OK) {
+            $svc::flashMissing($doc);
+
+            return redirect()->back()->with('error', $doc['message']);
+        }
+
+        return $svc->respond($this->response, $doc, $inline);
     }
 
     /**

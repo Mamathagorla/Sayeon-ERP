@@ -49,8 +49,8 @@
                         <?php if (! empty($company['gst'])): ?>
                         <div class="bill-meta-row"><span class="k">Company GSTIN</span><span class="v"><?= esc($company['gst']) ?></span></div>
                         <?php endif; ?>
-                        <div class="bill-meta-row"><span class="k">Bill Date</span><span class="v"><?= esc(date('d/m/Y', strtotime($bill['issue_date']))) ?></span></div>
-                        <div class="bill-meta-row"><span class="k">Due Date</span><span class="v <?= $bill['due_date'] ? '' : 'muted' ?>"><?= $bill['due_date'] ? esc(date('d/m/Y', strtotime($bill['due_date']))) : '—' ?></span></div>
+                        <div class="bill-meta-row"><span class="k">Bill Date</span><span class="v"><?= esc(erp_date($bill['issue_date'])) ?></span></div>
+                        <div class="bill-meta-row"><span class="k">Due Date</span><span class="v <?= $bill['due_date'] ? '' : 'muted' ?>"><?= $bill['due_date'] ? esc(erp_date($bill['due_date'])) : '—' ?></span></div>
                         <div class="bill-meta-row"><span class="k">Notes</span><span class="v <?= $bill['notes'] ? '' : 'muted' ?>"><?= esc($bill['notes'] ?? '—') ?></span></div>
                     </div>
                     <div class="bill-meta-col">
@@ -74,9 +74,9 @@
                         <?php foreach ($items as $item): ?>
                         <tr>
                             <td><?= esc($item['description']) ?></td>
-                            <td class="text-end"><?= rtrim(rtrim(number_format((float) $item['quantity'], 2), '0'), '.') ?></td>
-                            <td class="text-end"><?= number_format((float) $item['rate'], 2) ?></td>
-                            <td class="text-end"><?= number_format((float) $item['amount'], 2) ?></td>
+                            <td class="text-end"><?= rtrim(rtrim(erp_number((float) $item['quantity'], 2), '0'), '.') ?></td>
+                            <td class="text-end"><?= erp_number((float) $item['rate'], 2) ?></td>
+                            <td class="text-end"><?= erp_number((float) $item['amount'], 2) ?></td>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -88,20 +88,20 @@
         <div class="card mb-3">
             <div class="card-body">
                 <div class="bill-totals">
-                    <div class="bill-meta-row"><span class="k">Subtotal</span><span class="v"><?= number_format((float) $bill['subtotal'], 2) ?></span></div>
+                    <div class="bill-meta-row"><span class="k">Subtotal</span><span class="v"><?= erp_number((float) $bill['subtotal'], 2) ?></span></div>
                     <?php if ((float) $bill['discount_amount'] > 0): ?>
-                    <div class="bill-meta-row"><span class="k">Discount (<?= rtrim(rtrim(number_format((float) $bill['discount_percent'], 2), '0'), '.') ?>%)</span><span class="v">- <?= number_format((float) $bill['discount_amount'], 2) ?></span></div>
+                    <div class="bill-meta-row"><span class="k">Discount (<?= rtrim(rtrim(erp_number((float) $bill['discount_percent'], 2), '0'), '.') ?>%)</span><span class="v">- <?= erp_number((float) $bill['discount_amount'], 2) ?></span></div>
                     <?php endif; ?>
                     <?php if ((float) $bill['cgst_amount'] > 0): ?>
-                    <div class="bill-meta-row"><span class="k">CGST</span><span class="v"><?= number_format((float) $bill['cgst_amount'], 2) ?></span></div>
-                    <div class="bill-meta-row"><span class="k">SGST</span><span class="v"><?= number_format((float) $bill['sgst_amount'], 2) ?></span></div>
+                    <div class="bill-meta-row"><span class="k">CGST</span><span class="v"><?= erp_number((float) $bill['cgst_amount'], 2) ?></span></div>
+                    <div class="bill-meta-row"><span class="k">SGST</span><span class="v"><?= erp_number((float) $bill['sgst_amount'], 2) ?></span></div>
                     <?php endif; ?>
                     <?php if ((float) $bill['igst_amount'] > 0): ?>
-                    <div class="bill-meta-row"><span class="k">IGST</span><span class="v"><?= number_format((float) $bill['igst_amount'], 2) ?></span></div>
+                    <div class="bill-meta-row"><span class="k">IGST</span><span class="v"><?= erp_number((float) $bill['igst_amount'], 2) ?></span></div>
                     <?php endif; ?>
-                    <div class="bill-meta-row grand"><span class="k">Grand Total</span><span class="v"><?= number_format((float) $bill['amount'], 2) ?></span></div>
-                    <div class="bill-meta-row"><span class="k">Paid</span><span class="v"><?= number_format($paid, 2) ?></span></div>
-                    <div class="bill-meta-row balance"><span class="k">Balance Due</span><span class="v"><?= number_format($balance, 2) ?></span></div>
+                    <div class="bill-meta-row grand"><span class="k">Grand Total</span><span class="v"><?= erp_number((float) $bill['amount'], 2) ?></span></div>
+                    <div class="bill-meta-row"><span class="k">Paid</span><span class="v"><?= erp_number($paid, 2) ?></span></div>
+                    <div class="bill-meta-row balance"><span class="k">Balance Due</span><span class="v"><?= erp_number($balance, 2) ?></span></div>
                 </div>
             </div>
         </div>
@@ -117,10 +117,10 @@
                     <tbody>
                     <?php foreach ($payments as $p): ?>
                         <tr>
-                            <td><?= esc(date('d/m/Y', strtotime($p['payment_date']))) ?></td>
+                            <td><?= esc(erp_date($p['payment_date'])) ?></td>
                             <td><?= esc($p['method'] ?? '—') ?></td>
                             <td><?= esc($p['reference'] ?? '—') ?></td>
-                            <td class="text-end"><?= number_format($p['amount'], 2) ?></td>
+                            <td class="text-end"><?= erp_number($p['amount'], 2) ?></td>
                             <td class="text-end">
                                 <?php if (can('bill.edit')): ?>
                                 <form action="<?= site_url('accounting/payments/' . $p['id'] . '/delete') ?>" method="post" onsubmit="return confirm('Remove this payment?');">

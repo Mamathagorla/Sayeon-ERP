@@ -139,8 +139,8 @@ $lastPayment = $payments[count($payments) - 1] ?? null;
             <div class="tag">BILL</div>
             <div class="num">#<?= esc($bill['bill_number']) ?></div>
             <div class="dates">
-                Bill Date: <?= esc(date('d M Y', strtotime($bill['issue_date']))) ?><br>
-                Due Date: <?= $bill['due_date'] ? esc(date('d M Y', strtotime($bill['due_date']))) : '—' ?>
+                Bill Date: <?= esc(erp_date($bill['issue_date'])) ?><br>
+                Due Date: <?= $bill['due_date'] ? esc(erp_date($bill['due_date'])) : '—' ?>
             </div>
         </div>
     </div>
@@ -170,18 +170,18 @@ $lastPayment = $payments[count($payments) - 1] ?? null;
                 <td><?= esc($bill['notes'] ?: ('Bill ' . $bill['bill_number'])) ?></td>
                 <td class="num">—</td>
                 <td class="num">—</td>
-                <td class="num"><?= rtrim(rtrim(number_format((float) $bill['gst_percent'], 2), '0'), '.') ?>%</td>
-                <td class="num"><?= number_format((float) $bill['amount'], 2) ?></td>
+                <td class="num"><?= rtrim(rtrim(erp_number((float) $bill['gst_percent'], 2), '0'), '.') ?>%</td>
+                <td class="num"><?= erp_number((float) $bill['amount'], 2) ?></td>
             </tr>
             <?php else: ?>
                 <?php foreach ($items as $i => $item): ?>
                 <tr>
                     <td><?= $i + 1 ?></td>
                     <td><?= esc($item['description']) ?></td>
-                    <td class="num"><?= rtrim(rtrim(number_format((float) $item['quantity'], 2), '0'), '.') ?></td>
-                    <td class="num"><?= number_format((float) $item['rate'], 2) ?></td>
-                    <td class="num"><?= rtrim(rtrim(number_format((float) $bill['gst_percent'], 2), '0'), '.') ?>%</td>
-                    <td class="num"><?= number_format((float) $item['amount'], 2) ?></td>
+                    <td class="num"><?= rtrim(rtrim(erp_number((float) $item['quantity'], 2), '0'), '.') ?></td>
+                    <td class="num"><?= erp_number((float) $item['rate'], 2) ?></td>
+                    <td class="num"><?= rtrim(rtrim(erp_number((float) $bill['gst_percent'], 2), '0'), '.') ?>%</td>
+                    <td class="num"><?= erp_number((float) $item['amount'], 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -190,20 +190,20 @@ $lastPayment = $payments[count($payments) - 1] ?? null;
 
     <div class="bottom-grid">
         <div class="totals-box">
-            <div class="totals-row"><span>Subtotal</span><span><?= number_format((float) $bill['subtotal'], 2) ?></span></div>
+            <div class="totals-row"><span>Subtotal</span><span><?= erp_number((float) $bill['subtotal'], 2) ?></span></div>
             <?php if ((float) $bill['discount_amount'] > 0): ?>
-            <div class="totals-row"><span>Discount (<?= rtrim(rtrim(number_format((float) $bill['discount_percent'], 2), '0'), '.') ?>%)</span><span>- <?= number_format((float) $bill['discount_amount'], 2) ?></span></div>
+            <div class="totals-row"><span>Discount (<?= rtrim(rtrim(erp_number((float) $bill['discount_percent'], 2), '0'), '.') ?>%)</span><span>- <?= erp_number((float) $bill['discount_amount'], 2) ?></span></div>
             <?php endif; ?>
             <?php if ((float) $bill['cgst_amount'] > 0): ?>
-            <div class="totals-row"><span>CGST</span><span><?= number_format((float) $bill['cgst_amount'], 2) ?></span></div>
-            <div class="totals-row"><span>SGST</span><span><?= number_format((float) $bill['sgst_amount'], 2) ?></span></div>
+            <div class="totals-row"><span>CGST</span><span><?= erp_number((float) $bill['cgst_amount'], 2) ?></span></div>
+            <div class="totals-row"><span>SGST</span><span><?= erp_number((float) $bill['sgst_amount'], 2) ?></span></div>
             <?php endif; ?>
             <?php if ((float) $bill['igst_amount'] > 0): ?>
-            <div class="totals-row"><span>IGST</span><span><?= number_format((float) $bill['igst_amount'], 2) ?></span></div>
+            <div class="totals-row"><span>IGST</span><span><?= erp_number((float) $bill['igst_amount'], 2) ?></span></div>
             <?php endif; ?>
-            <div class="totals-row total"><span>Grand Total</span><span><?= number_format((float) $bill['amount'], 2) ?></span></div>
-            <div class="totals-row"><span>Paid</span><span><?= number_format($paid, 2) ?></span></div>
-            <div class="totals-row balance"><span>Balance Due</span><span><?= number_format($balance, 2) ?></span></div>
+            <div class="totals-row total"><span>Grand Total</span><span><?= erp_number((float) $bill['amount'], 2) ?></span></div>
+            <div class="totals-row"><span>Paid</span><span><?= erp_number($paid, 2) ?></span></div>
+            <div class="totals-row balance"><span>Balance Due</span><span><?= erp_number($balance, 2) ?></span></div>
         </div>
         <div class="pay-info">
             <span class="label">Payment Method</span>

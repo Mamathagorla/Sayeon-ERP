@@ -1,0 +1,98 @@
+ERP PROJECT – FEATURE DOCUMENTATION
+
+1-Calendar
+->the events should be clickable
+
+2-TO-DO-LIST
+->Need to have sub-to-do
+->No separate form to add to-do
+
+3-Companies
+->Dropdown to choose country 
+->Each company should have a code and id
+
+4. Meetings Management
+
+The Meetings Management feature is designed to make scheduling and managing meetings easier within the ERP application. Users should be able to create meetings by entering details such as the meeting title, date, time, and duration. They should also be able to add multiple participants, including employees and other required attendees.
+
+The system should support Google Meet integration so that users can generate meeting links and share them with participants through email. All meeting details should be stored in the ERP, allowing users to view and manage their scheduled meetings easily.
+
+The main goal is to reduce manual work and make meeting coordination more convenient.
+
+5. Compliance Management
+
+The Compliance Management feature should allow organizations to manage compliance requirements according to their needs. Instead of restricting users to a fixed list of compliance types, the system should provide an option to add new compliance categories whenever required.
+
+Users should be able to maintain the necessary information for each compliance type and manage the related records in one place. This will make the module more flexible and suitable for organizations with different compliance requirements.
+
+6-Employees
+->Each Employee should have an emp-id as per company
+
+
+7. Employee Onboarding
+
+Send Onboarding Link:
+HR should be able to send an onboarding link to the candidate's registered email address.
+
+Candidate Information Form:
+The link should open a form where candidates can provide all required personal, educational, employment, contact, and other relevant details.
+
+Document Collection:
+Candidates should be able to upload the necessary supporting documents wherever required.
+
+Information Verification:
+HR should review and verify the information and documents submitted by the candidate.
+
+Offer Letter Generation:
+If the submitted information is acceptable and the candidate is approved, HR should be able to generate and send the offer letter using the document template feature.
+
+Offer Acceptance:
+The system should track whether the candidate has accepted or declined the offer letter.
+
+Rejection or Withdrawal:
+If the candidate declines the offer or the organization decides not to proceed, the application should support the appropriate status update and closure of the onboarding process.
+
+If Accepted Generate joining letter
+
+Complete checklist
+
+
+8. Leave Management
+
+The system should clearly display whether a leave request is pending, approved, or rejected. It should also show who approved or rejected the request so that employees and HR can easily understand the decision.
+
+
+
+9. Customer Management – GST Handling
+
+The Customer Management module should support GST-related calculations based on the customer's location and the details of the transaction.
+
+The system should maintain relevant customer information, including the address, state, and GST identification details wherever applicable.
+
+For transactions within the same state, the system should support the applicable CGST and SGST calculations. For transactions between different states, it should support the applicable IGST calculation.
+
+The tax treatment should be determined using the relevant transaction details and applicable GST rules. This will help reduce manual calculations and improve the accuracy of customer invoices.
+
+
+10. ERP Settings – Localization
+
+The Localization feature is intended to make the ERP suitable for organizations operating in different countries and regions.
+
+Users should be able to configure settings such as country, currency, time zone, and regional date and time formats. For example, an organization operating in India may use INR and the Asia/Kolkata time zone, while an organization in the United States may use USD and an appropriate US time zone.
+
+The system should display dates, times, numbers, and currency values according to the configured regional settings wherever applicable. Meeting times should also be handled correctly when participants are located in different time zones.
+
+These settings should be saved and applied consistently across the application. The goal is to make the ERP more flexible and convenient for users working in different locations.
+
+ 
+
+11. Employee Information and Record Visibility
+
+Employee-related information should be organized so that HR and other authorized users can easily access the details they need.
+
+Depending on their permissions, users should be able to view relevant information such as employee profiles, onboarding progress, leave records, approval details, and project assignments.
+
+Keeping these details organized in one system will help reduce manual recordkeeping and make employee information easier to manage. Access to sensitive information should remain restricted to authorized users.
+
+
+

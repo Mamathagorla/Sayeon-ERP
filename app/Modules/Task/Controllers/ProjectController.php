@@ -25,14 +25,15 @@ class ProjectController extends BaseController
 
     public function index()
     {
-        $filters = $this->request->getGet(['company_id', 'status']) ?? [];
+        $filters = array_filter($this->request->getGet(['company_id', 'status']) ?? []);
 
+        // Added AFTER array_filter(): a scope of 0 (account with no company yet) must survive and match nothing.
         $companyScope = $this->companyScopeFor(self::COMPANY_SCOPED_ROLES);
         if ($companyScope !== null) {
             $filters['company_id'] = $companyScope;
         }
 
-        $projects   = $this->projectModel->filtered(array_filter($filters))->findAll();
+        $projects   = $this->projectModel->filtered($filters)->findAll();
         $taskCounts = $this->taskModel->countsByProjectIds(array_column($projects, 'id'));
 
         foreach ($projects as &$p) {
@@ -70,6 +71,10 @@ class ProjectController extends BaseController
 
         if ($this->outOfScope(self::COMPANY_SCOPED_ROLES, (int) $this->request->getPost('company_id'))) {
             return redirect()->back()->withInput()->with('error', 'You can only create projects for your own company.');
+        }
+
+        if (! $this->ownerMatchesCompany($this->request->getPost('owner_id'), (int) $this->request->getPost('company_id'))) {
+            return redirect()->back()->withInput()->with('error', 'The owner must belong to the selected company.');
         }
 
         $id = $this->projectModel->insert($this->payload());
@@ -128,6 +133,10 @@ class ProjectController extends BaseController
             return redirect()->back()->withInput()->with('error', 'You can only assign projects to your own company.');
         }
 
+        if (! $this->ownerMatchesCompany($this->request->getPost('owner_id'), (int) $this->request->getPost('company_id'))) {
+            return redirect()->back()->withInput()->with('error', 'The owner must belong to the selected company.');
+        }
+
         // skipValidation: already validated above via validationRulesFor($id)
         // with the real id interpolated — see TaskController::update()'s
         // identical comment for why this matters (confirmed live on the
@@ -174,9 +183,32 @@ class ProjectController extends BaseController
             'project'   => $project,
             'companies' => $companies,
             'nextCodeByCompany' => $nextCodeByCompany,
-            'users'     => $this->scopedUserOptions($this->userModel->listForOptions()),
+            // listForOptionsWithCompany() — each row carries company_id, so the
+            // view can filter the Owner dropdown client-side as Company changes
+            // (same convention as Task/Meeting's own "Assigned To"/Participants).
+            'users'     => $this->scopedUserOptions($this->userModel->listForOptionsWithCompany()),
             'statuses'  => ProjectModel::STATUSES,
         ];
+    }
+
+    /**
+     * The Owner must belong to the project's own company — same rule and
+     * reasoning as TaskController::assigneeMatchesCompany(). The Owner
+     * dropdown's company filtering in the view is a convenience, not a
+     * guarantee; this is the actual enforcement.
+     */
+    private function ownerMatchesCompany(?string $ownerId, int $companyId): bool
+    {
+        if (! $ownerId) {
+            return true;
+        }
+
+        $profile = db_connect()->table('employee_profiles')
+            ->where('user_id', (int) $ownerId)
+            ->where('company_id', $companyId)
+            ->countAllResults();
+
+        return $profile > 0;
     }
 
     private function payload(): array

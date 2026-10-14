@@ -11,16 +11,17 @@
     <div class="card-body">
         <table class="table table-striped table-hover" id="companiesTable">
             <thead>
-                <tr><th>Company</th><th>Status</th><th>Owner</th><th>Country</th><th>GST</th><th class="text-end">Actions</th></tr>
+                <tr><th>Company ID</th><th>Company Code</th><th>Company Name</th><th>Country</th><th>State</th><th>Status</th><th class="text-end">Actions</th></tr>
             </thead>
             <tbody>
             <?php foreach ($companies as $c): ?>
                 <tr>
-                    <td><a href="<?= site_url('companies/' . $c['id']) ?>"><?= esc($c['name']) ?></a> <?php if (! empty($c['short_code'])): ?><span class="badge bg-light text-dark border"><?= esc($c['short_code']) ?></span><?php endif; ?></td>
+                    <td><?= (int) $c['id'] ?></td>
+                    <td><?php if (! empty($c['short_code'])): ?><span class="badge bg-light text-dark border"><?= esc($c['short_code']) ?></span><?php else: ?>—<?php endif; ?></td>
+                    <td><a href="<?= site_url('companies/' . $c['id']) ?>"><?= esc($c['name']) ?></a></td>
+                    <td><?= esc($c['country_name'] ?? $c['country'] ?: '—') ?></td>
+                    <td><?= esc($c['state_name'] ?? '—') ?></td>
                     <td><span class="badge bg-<?= $c['status'] === 'active' ? 'success' : 'secondary' ?>"><?= esc($c['status']) ?></span></td>
-                    <td><?= esc($c['owner_name'] ?? '—') ?></td>
-                    <td><?= esc($c['country_name'] ?? $c['country']) ?></td>
-                    <td><?= esc($c['gst'] ?? '—') ?></td>
                     <td class="text-end">
                         <a href="<?= site_url('companies/' . $c['id'] . '/edit') ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen"></i></a>
                         <form action="<?= site_url('companies/' . $c['id'] . '/delete') ?>" method="post" class="d-inline" onsubmit="return confirm('Deactivate this company?');">

@@ -1,7 +1,7 @@
 <?= $this->extend('layouts/main') ?>
 
 <?php
-$fmt = static fn (string $d, string $f = 'd/m/Y'): string => date($f, strtotime($d));
+$fmt = static fn (string $d): string => erp_date($d);
 $pct = static fn (int $done, int $total): int => $total > 0 ? (int) round($done / $total * 100) : 0;
 
 // Action Required: each group = count, up to 4 shown, link to the page
@@ -61,7 +61,7 @@ $quick = array_filter([
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <p class="text-muted mb-0">Welcome back, <strong><?= esc(session('userName')) ?></strong> — here's your workforce at a glance.</p>
-    <span class="sy-week-chip"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc(date('D, d/m/Y')) ?></span>
+    <button type="button" class="sy-week-chip" data-erp-calendar="<?= date('Y-m-d') ?>" aria-haspopup="dialog"><i class="fas fa-calendar-days me-2" style="color:var(--sy-accent-ink)"></i><?= esc(date('D') . ', ' . erp_date(date('Y-m-d'))) ?></button>
 </div>
 
 <?php if ($noCompanyAssigned): ?>

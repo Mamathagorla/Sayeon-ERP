@@ -1,0 +1,103 @@
+/* ERP in-page forms: the drawer shell (parent page) and the "embed" mode of the layout (inside the drawer's frame). */
+
+/* ============================================================ drawer shell */
+.erp-drawer {
+    width: min(880px, 100vw) !important; /* >= Bootstrap's md breakpoint inside the frame, so related fields sit two per row on desktop */
+    border-radius: 18px 0 0 18px;
+    border: 0;
+    box-shadow: -18px 0 48px rgba(16, 36, 63, .22);
+    background: var(--sy-surface, #fff);
+    color: var(--sy-ink, inherit);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+@media (max-width: 767.98px) {
+    .erp-drawer { width: 100vw !important; border-radius: 0; }
+}
+.erp-drawer-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 1rem 1.25rem; flex: 0 0 auto;
+    border-bottom: 1px solid var(--sy-border-soft, #e6ebf0);
+}
+.erp-drawer-title { font-size: 1.15rem; font-weight: 700; margin: 0; letter-spacing: .1px; }
+.erp-drawer-body { position: relative; flex: 1 1 auto; min-height: 0; background: var(--sy-surface, #fff); }
+.erp-drawer-frame { width: 100%; height: 100%; border: 0; display: block; opacity: 0; transition: opacity .15s ease; background: transparent; }
+.erp-drawer-frame.is-ready { opacity: 1; }
+.erp-drawer-frame.is-busy { pointer-events: none; opacity: .55; }
+.erp-drawer-loading {
+    position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--sy-surface, #fff) 70%, transparent);
+}
+.erp-drawer-footer {
+    flex: 0 0 auto; display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap;
+    padding: .85rem 1.25rem; border-top: 1px solid var(--sy-border-soft, #e6ebf0);
+    background: var(--sy-surface, #fff);
+}
+.erp-btn { min-width: 96px; border-radius: 10px; font-weight: 600; }
+.erp-drawer-footer:empty { display: none; }
+
+/* ============================================================ modal shell (short forms) */
+.erp-modal .modal-dialog { max-width: 640px; }
+.erp-modal-content {
+    border: 0; border-radius: 18px; overflow: hidden;
+    background: var(--sy-surface, #fff); color: var(--sy-ink, inherit);
+    box-shadow: 0 24px 64px rgba(16, 36, 63, .28);
+}
+.erp-modal .erp-drawer-body { flex: 0 1 auto; }
+.erp-modal .erp-drawer-frame { height: 240px; max-height: calc(100vh - 14rem); }
+.erp-modal .erp-drawer-loading { min-height: 240px; }
+.erp-modal .erp-drawer-loading.d-none + .erp-drawer-frame { min-height: 0; }
+@media (max-width: 575.98px) {
+    .erp-modal .modal-dialog { margin: .5rem; max-width: none; }
+}
+
+/* ============================================ embed mode (inside the frame) */
+html:has(body.erp-embed), body.erp-embed { height: auto !important; min-height: 0 !important; overflow: auto !important; background: transparent !important; }
+body.erp-embed .app-sidebar,
+body.erp-embed .app-header,
+body.erp-embed .app-content-header,
+body.erp-embed .app-footer,
+body.erp-embed #backToTop,
+body.erp-embed .sy-back-to-top { display: none !important; }
+body.erp-embed .app-wrapper,
+body.erp-embed .app-main-column { display: block !important; height: auto !important; min-height: 0 !important; overflow: visible !important; }
+body.erp-embed .app-main { height: auto !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; background: transparent !important; }
+body.erp-embed .app-content { padding: 1.25rem 1.5rem 2rem !important; }
+body.erp-embed .app-content > .container-fluid { padding: 0 !important; max-width: none; }
+
+/* The standalone page wraps the form in a narrow card; in the drawer it simply fills the width. */
+body.erp-embed .card { box-shadow: none !important; border: 0 !important; background: transparent !important; margin: 0 !important; }
+body.erp-embed .card > .card-body { padding: 0 !important; }
+body.erp-embed .card[class*="col-"], body.erp-embed .row > [class*="col-xl-"], body.erp-embed .row > [class*="col-lg-"] { flex: 0 0 100%; max-width: 100%; width: 100%; }
+body.erp-embed .row { --bs-gutter-x: 1rem; }
+
+/* Section headings and consistent field rhythm */
+body.erp-embed h5, body.erp-embed h6, body.erp-embed legend, body.erp-embed .form-section-title {
+    font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--sy-muted, #6b7785); margin: 1.4rem 0 .75rem; padding-bottom: .4rem;
+    border-bottom: 1px solid var(--sy-border-soft, #e6ebf0); float: none; width: 100%;
+}
+body.erp-embed form > h5:first-child, body.erp-embed form > h6:first-child { margin-top: 0; }
+body.erp-embed .form-label { font-weight: 600; font-size: .85rem; margin-bottom: .3rem; }
+body.erp-embed .form-control, body.erp-embed .form-select { border-radius: 10px; }
+body.erp-embed .form-text, body.erp-embed small.text-muted { font-size: .78rem; }
+body.erp-embed .invalid-feedback { font-size: .8rem; }
+body.erp-embed .alert { border-radius: 12px; }
+body.erp-embed textarea.form-control { min-height: 5.5rem; }
+
+/* ============================================================ wide modal (long forms) */
+.erp-modal.erp-modal-wide .modal-dialog { max-width: min(920px, calc(100vw - 2rem)); height: calc(100vh - 3.5rem); }
+.erp-modal.erp-modal-wide .modal-content { height: 100%; }
+.erp-modal.erp-modal-wide .erp-drawer-body { flex: 1 1 auto; min-height: 0; }
+.erp-modal.erp-modal-wide .erp-drawer-frame { height: 100%; max-height: none; }
+.erp-modal.erp-modal-wide .erp-drawer-loading { min-height: 0; }
+.erp-modal-content { display: flex; flex-direction: column; max-height: 100%; }
+.erp-modal.modal.show { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.modal-backdrop.show { opacity: .45; }
+.erp-modal .erp-drawer-header { padding: 1.1rem 1.5rem; }
+.erp-modal .erp-drawer-footer { padding: .9rem 1.5rem; }
+.erp-modal .erp-drawer-title { font-size: 1.25rem; }
+@media (max-width: 575.98px) {
+    .erp-modal.erp-modal-wide .modal-dialog { margin: .5rem; height: calc(100vh - 1rem); max-width: none; }
+}

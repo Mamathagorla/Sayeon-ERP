@@ -19,6 +19,7 @@ class PermissionSeeder extends Seeder
             'employee', 'attendance', 'leave', 'payroll', 'performance', 'onboarding', 'offboarding',
             'expense', 'bank_account', 'invoice', 'bill', 'customer',
             'website', 'document', 'campaign', 'policy', 'purchase_order', 'support_ticket',
+            'setting',
         ];
         $actions = ['view', 'create', 'edit', 'delete'];
 
@@ -64,6 +65,13 @@ class PermissionSeeder extends Seeder
                 'module'      => 'purchase_order',
                 'description' => 'Approve or reject purchase order requests',
             ]);
+        }
+
+        // Expense claims: submit / approve / reimburse workflow beyond plain CRUD.
+        foreach (['view' => 'View expense claims', 'create' => 'Submit expense claims', 'approve' => 'Approve or reject expense claims', 'reimburse' => 'Reimburse approved expense claims'] as $action => $description) {
+            if ($this->db->table('permissions')->where('slug', "expense_claim.{$action}")->countAllResults() === 0) {
+                $this->db->table('permissions')->insert(['slug' => "expense_claim.{$action}", 'module' => 'expense_claim', 'description' => $description]);
+            }
         }
 
         // Superseded by the invoice/bill split above — Invoice/BillController
